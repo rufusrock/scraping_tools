@@ -1,0 +1,71 @@
+QUERY,AMZN_RANK(S),AMZN-YCOORDS,ADWORD_ADS,GSHOP_CRSL,GMAPS_WIDGET,DATE_RECORDED
+shampoo,[],[],0,True,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+kettle,[],[],0,True,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+diffuser,[0],[661],0,True,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+pillow,[9],[2747],1,False,False,2022-11-24
+blanket,[1],[843],0,False,False,2022-11-24
+airpods,[7],[1788],1,False,False,2022-11-24
+earphones,"[5, 6]","[1069, 1208]",2,False,False,2022-11-24
+headphones,[1],[928],0,False,False,2022-11-24
+blender,[9],[2552],0,True,False,2022-11-24
+pan,[],[],0,False,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+thermometer,[0],[281],0,False,False,2022-11-24
+speaker,[2],[663],0,False,False,2022-11-24
+scale,[],[],0,False,False,2022-11-24
+instantpot,[1],[742],0,False,False,2022-11-24
+sieve,[0],[281],0,False,False,2022-11-24
+chewtoy,"[1, 2]","[469, 585]",0,False,False,2022-11-24,INDEX ERROR,INDEX ERROR
+lamp,[],[],0,False,False,2022-11-24
+grinder,"[6, 7]","[845, 962]",0,False,False,2022-11-24
+mug,[],[],0,False,False,2022-11-24
+plates,[3],[983],0,False,False,2022-11-24
+torch,[1],[432],0,False,False,2022-11-24
+makeup,[],[],0,False,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+mirror,[],[],0,False,False,2022-11-24
+earbuds,[1],[843],0,False,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+tablet,[6],[867],0,False,False,2022-11-24
+camera,[2],[582],0,False,False,2022-11-24,INDEX ERROR,INDEX ERROR,INDEX ERROR,INDEX ERROR
+hairbrush,[1],[557],0,False,False,2022-11-24
+console,[],[],0,False,False,2022-11-24
+peeler,"[0, 1]","[281, 522]",0,False,False,2022-11-24
+charger,[0],[692],0,False,False,2022-11-24
+mandolin,[6],[970],0,False,False,2022-11-24
+laptop,[8],[1147],0,False,False,2022-11-24
+computer,[7],[1143],0,False,False,2022-11-24
+printer,[6],[938],0,False,False,2022-11-24
+scanner,[5],[787],0,False,False,2022-11-24
+pens,"[6, 10]","[867, 1779]",0,False,False,2022-11-24
+pencils,[0],[352],0,False,False,2022-11-24
+stationary,[4],[1375],0,False,False,2022-11-24
+ereader,"[7, 11]","[981, 1600]",0,False,False,2022-11-24
+sheets,[],[],0,False,False,2022-11-24
+duvet,[6],[867],0,False,False,2022-11-24
+candle,[],[],0,False,False,2022-11-24
+table,[0],[352],0,False,False,2022-11-24
+shirt,[],[],0,False,False,2022-11-24
+shorts,[],[],0,False,False,2022-11-24
+skirt,[],[],0,False,False,2022-11-24
+gloves,[7],[2311],0,False,False,2022-11-24
+monitor,[5],[716],0,False,False,2022-11-24
+TV,[12],[2140],0,False,False,2022-11-24
+hdmi-cable,[0],[281],0,False,False,2022-11-24
+kitchenroll,[1],[609],0,False,False,2022-11-24
+toiletroll,[1],[631],0,False,False,2022-11-24
+soap,[3],[1279],0,False,False,2022-11-24
+showergel,[6],[1022],0,False,False,2022-11-24
+conditioner,[],[],0,False,False,2022-11-24
+tote,[],[],0,False,False,2022-11-24
+knives,[11],[2093],0,False,True,2022-11-24
+frame,[],[],0,False,False,2022-11-24
+mop,[1],[432],0,False,False,2022-11-24
+brush,[5],[787],0,False,False,2022-11-24
+vacuum,[3],[804],0,False,False,2022-11-24
+duster,[],[],0,False,False,2022-11-24
+extensioncord,"[0, 1]","[355, 597]",0,False,False,2022-11-24
+bottle,[0],[281],0,False,False,2022-11-24
+polish,[],[],0,False,False,2022-11-24
+broom,"[0, 1]","[281, 522]",0,False,False,2022-11-24
+paper,[7],[1009],0,False,True,2022-11-24
+mat,[9],[1505],0,False,False,2022-11-24
+roller,[],[],0,False,False,2022-11-24
+notebook,[0],[352],0,False,False,2022-11-24
