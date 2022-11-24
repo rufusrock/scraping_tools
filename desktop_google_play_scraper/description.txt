@@ -1,0 +1,3 @@
+This just gets google play search results from a file of listed terms - interesting to see how google might overrepresent itself in search results? 
+Realistically I was just warming up my data scraping/beautiful soup skills with this project.
+Nonetheless App Stores should remain area of interest. 
