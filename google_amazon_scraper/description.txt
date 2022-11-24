@@ -1,0 +1,1 @@
+This is where I'll put each version of the google search scraping tool to investigate relationship between Google search and Amazon. 
