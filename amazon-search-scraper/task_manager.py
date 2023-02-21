@@ -44,10 +44,10 @@ for query in queries:
         
         result = scraping_task.apply_async(args=[query])
         print(result)
-        time.sleep(10)
+        time.sleep(15) # gives each instance time to start
 
-        if counter % 1 == 0:
-            time.sleep(180)
+        if counter % 4 == 0:
+            time.sleep(180) #tries to roughly batch the tasks into 4 (doesn't really matter because celery is async
             #os.system("mullvad relay set location " + country + " " + random.choice(cities)) uncomment if you have mullvad vpn
 
             
