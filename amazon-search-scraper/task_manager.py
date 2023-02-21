@@ -48,8 +48,8 @@ for query in queries:
 
         if counter % 1 == 0:
             time.sleep(180)
-            os.system("mullvad relay set location " + country + " " + random.choice(cities)) 
-            time.sleep(60)
+            #os.system("mullvad relay set location " + country + " " + random.choice(cities)) uncomment if you have mullvad vpn
+
             
 
         
