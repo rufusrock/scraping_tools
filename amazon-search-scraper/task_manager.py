@@ -39,7 +39,7 @@ city = random.choice(cities)
 
 counter = 0
 for query in queries:
-    if query not in completed_tasks and query != "search_term" and query != "k-cup flavored coffee":
+    if query not in completed_tasks and query != "search_term" and "-" not in query: #need to fix this last criteria BUG
         counter = counter + 1
         
         result = scraping_task.apply_async(args=[query])
