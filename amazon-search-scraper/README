@@ -10,13 +10,18 @@ Some Prerequisites needed:
 
 Using MullVad vpn to rotate IPs, I disabled it here, but if you have that you'll need to uncomment the os.system call in task_manager (line  52)
 
-Currently set up to work with celery. You'll need to 1) fire up a redis-cli instance on local machine.
+Currently set up to work with celery. You'll need to: 
+
+1) fire up a redis-cli instance on local machine.
 
 2) Navigate to code directory and run "celery -A amazon_search_light worker --concurrency=4 --loglevel=info"
-
+  - This runs 4 simultaneous instances (you can use --pool=solo instead of --concurrency=4 for a single instance)
+  
 3) Then fire up the Task Manager and it should start distributing tasks, "python task_manager.py"
 
-Alternatively, 1) just remove the celery notation (lines 484-488) from amazon_search_light.py 
+Alternatively for single term scraping, 
+
+1) Remove the celery notation (lines 484-488) from amazon_search_light.py 
 
 2) set search_term (in def scraping_task("whatever_you_like") for a single scrape. 
 
