@@ -22,6 +22,19 @@ from celery import Celery
 import geocoder
 from math import floor
 
+# hard code this so users can change the location
+# also __file__ doesn't work from the repl
+FILE_PATH = "/home/brandon/scraping_tools/amazon-search-scraper"
+USERNAME = "rufusrock"
+# don't commit password!
+PASSWORD = "######"
+ENDPOINT = "us-pr.oxylabs.io:10000"
+BROKER_URL = "redis://localhost:6379/0"
+BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
+# ubuntu: BINARY_LOCATION = "/snap/firefox/current/usr/lib/firefox/firefox-bin"
+EXTENSION_FILEPATH = r"C://Users//Rufus//AppData//Roaming//Mozilla//Firefox//Profiles//ng032s5o.default-release//extensions//{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
+# ubuntu: EXTENSION_FILEPATH = "/home/brandon/snap/firefox/common/.mozilla/firefox/0tsz0chl.default/extensions/{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
+
 #Defines a function to install fakespot firefox addon and any other addons that might be required
 def install_addon(self, path, temporary=None):
     # Usage: driver.install_addon('/path/to/fakespot.xpi')
@@ -436,9 +449,6 @@ def init_script(search_term):
         dbname = get_database()
         collection_name = dbname[database_arg] """
 
-    #get filepath to current python file
-    file_path = os.path.dirname(os.path.realpath(__file__))
-
     search_term_filepath = search_term.replace(" ", "_")
 
     if filename_arg == None:
@@ -446,7 +456,7 @@ def init_script(search_term):
     else: 
         csv_file_name = filename_arg + ".csv"
 
-    csv_file_path = file_path + "//local_data//" + csv_file_name #This defines the path to where the csv file that will be created
+    csv_file_path = FILE_PATH + "//local_data//" + csv_file_name #This defines the path to where the csv file that will be created
 
     file_creator(header, csv_file_path) #This creates the csv file
 
@@ -488,10 +498,6 @@ def new_product(date, search_term, location, position_within_section):
     return product_dict
 
 def proxy_setup():
-    USERNAME = "rufusrock"
-    PASSWORD = "crJwUu2KnhdrsV3"
-    ENDPOINT = "us-pr.oxylabs.io:10000"
-
     wire_options = {
         'proxy': {
             "http": f"http://{USERNAME}:{PASSWORD}@{ENDPOINT}",
@@ -501,12 +507,11 @@ def proxy_setup():
     }
     return wire_options
 
-BROKER_URL = "redis://localhost:6379/0"
-
 celery_app = Celery("scraper", broker=BROKER_URL)
 
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
+# search_term = "towel stand"
 @celery_app.task
 def scraping_task(search_term):
     total_run_time = time.time() #Begin the timer for the total run time of the script
@@ -519,12 +524,11 @@ def scraping_task(search_term):
         options = Options()
         #set the browser to headless mode
         #options.headless = True
-        options.binary_location = r"C://Program Files//Mozilla Firefox//firefox.exe" #locates the firefox binary
+        options.binary_location = BINARY_LOCATION #locates the firefox binary
         browser = webdriver.Firefox(options=options)
         time.sleep(20)
         #browser = webdriver.Firefox(options=options, seleniumwire_options=proxies) #initializes the webdriver
-        extension_filepath = "C://Users//Rufus//AppData//Roaming//Mozilla//Firefox//Profiles//ng032s5o.default-release//extensions//{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi" #Defines the filepath to the fakespot addon
-        browser.install_addon(extension_filepath, temporary=True) #Installs the fakespot addon
+        browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
         print("[+]: Fakespot addon installed")
 
         time.sleep(10) #waits for the addon to install
@@ -550,7 +554,9 @@ def scraping_task(search_term):
             search_bar.send_keys(search_term) #enters the search term
             search_bar.send_keys(Keys.RETURN) #presses the enter key
             
-            selenium_products = WebDriverWait(browser,20).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "fs-grade")))
+            # I got a timeout exception here
+            # Page seems to have loaded fine though
+            # selenium_products = WebDriverWait(browser,20).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "fs-grade")))
             time.sleep(30)
 
             html = browser.page_source #gets the html of the page
