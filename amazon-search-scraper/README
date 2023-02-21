@@ -8,7 +8,7 @@ Some Prerequisites needed:
 - Firefox
 - Redis
 
-Using MullVad vpn to rotate IPs right now so, unless you've got that, you'll need to remove the os.system call in task_manager (line  52)
+Using MullVad vpn to rotate IPs, I disabled it here, but if you have that you'll need to uncomment the os.system call in task_manager (line  52)
 
 Currently set up to work with celery. You'll need to 1) fire up a redis-cli instance on local machine.
 
