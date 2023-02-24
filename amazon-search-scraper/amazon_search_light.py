@@ -6,14 +6,15 @@ from selenium.webdriver import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
-from selenium.common.exceptions import ElementClickInterceptedException
+from selenium.common.exceptions import ElementClickInterceptedException, NoSuchElementException
 from colorama import init, Fore
 #from pymongo_get_database import get_database
 from bs4 import BeautifulSoup
 from random import randint
 import time
-import argparse
+import urllib.request
 from datetime import datetime
+from twocaptcha import TwoCaptcha, APIException
 import csv
 import sys
 import os
@@ -30,10 +31,18 @@ USERNAME = "rufusrock"
 PASSWORD = "######"
 ENDPOINT = "us-pr.oxylabs.io:10000"
 BROKER_URL = "redis://localhost:6379/0"
+
 BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 # ubuntu: BINARY_LOCATION = "/snap/firefox/current/usr/lib/firefox/firefox-bin"
 EXTENSION_FILEPATH = r"C://Users//Rufus//AppData//Roaming//Mozilla//Firefox//Profiles//ng032s5o.default-release//extensions//{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
 # ubuntu: EXTENSION_FILEPATH = "/home/brandon/snap/firefox/common/.mozilla/firefox/0tsz0chl.default/extensions/{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
+
+#get the api key from the text file in home directory
+with open("2captcha_api_key.txt", "r", encoding="UTF-8") as f:
+    API_KEY = f.readline()
+    f.close()
+
+TWOCAPTCHA_API_KEY = os.getenv("APIKEY_2CAPTCHA", API_KEY)
 
 #Defines a function to install fakespot firefox addon and any other addons that might be required
 def install_addon(self, path, temporary=None):
@@ -291,24 +300,7 @@ def get_product_price(browser):
 def data_saver(page_data, csv_writer):
     #firstly we write the pagedata to the csv
     csv_writer.writerow(list(page_data.values()))
-    try:
-        #db_collection.insert_one(page_data) #inserts the data into the database
-        print("[+] Product Saved " + page_data["fakespot_rating"])
-        #print("[+] Data Submitted: " + str(size) + " bytes")
-    except:
-        print("[-] Error: Could not save to cloud")
-
-#parses arguments from the command line, -t for search term, -d for database name, -f for filename
-def arg_parser():
-    #this takes optional args about query and filename, dbname, etc and overrides preset values if they are present. 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-t", "--tasks", help="The term to be used in the search query")
-    parser.add_argument("-d", "--database", help="The name of the database to be used")
-    parser.add_argument("-f", "--filename", help="The name of the csv file to be used")
-
-    args, unknown = parser.parse_known_args()
-
-    return args.tasks, args.database, args.filename
+    #adding google cloud integration here
 
 #gets data from carousel listing web elements and calls product page scraper once the product pages are open (clumsy implementation)
 def get_carousel_data(browser, section_heading, product_data, product, s_product):
@@ -318,7 +310,6 @@ def get_carousel_data(browser, section_heading, product_data, product, s_product
         product_data["ad"] = True  
     
     product_data = get_product_data(browser, product, s_product, product_data)       
-    #product_data = product_page_scraper(browser, temp_soup, product_data)
     return product_data
 
 #gets data from video listing search results
@@ -507,6 +498,28 @@ def proxy_setup():
     }
     return wire_options
 
+def captcha_solver(browser):
+    captcha = browser.find_elements(By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")
+    if captcha:
+        solver = TwoCaptcha(TWOCAPTCHA_API_KEY)
+        try:
+            print("[+] Solving Captcha")
+            image_url = captcha[0].find_element(By.TAG_NAME, "img").get_attribute("src")
+            # Download the captcha image and save it to a file
+            urllib.request.urlretrieve(image_url, "captcha.jpg")
+            result = solver.normal("captcha.jpg")
+            print(result)
+            os.remove("captcha.jpg")
+            text_form = browser.find_element(By.CSS_SELECTOR, "input[id='captchacharacters']")
+            text_form.clear()
+            text_form.send_keys(result["code"].capitalize())
+            text_form.send_keys(Keys.RETURN)
+        except NoSuchElementException:
+            print("[+] Captcha element not found")
+        except Exception as e:
+            print(f"[-] Unexpected error: {e}")
+            
+
 celery_app = Celery("scraper", broker=BROKER_URL)
 
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
@@ -543,6 +556,8 @@ def scraping_task(search_term):
 
         browser.get("https://www.amazon.com")
         time.sleep(10)
+        captcha_solver(browser)
+        time.sleep(5)
         browser.refresh()
         time.sleep(10)
         counter = 0
