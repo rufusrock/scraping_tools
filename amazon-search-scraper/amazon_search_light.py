@@ -8,13 +8,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import ElementClickInterceptedException, NoSuchElementException
 from colorama import init, Fore
-#from pymongo_get_database import get_database
 from bs4 import BeautifulSoup
 from random import randint
 import time
 import urllib.request
 from datetime import datetime
-from twocaptcha import TwoCaptcha, APIException
+from twocaptcha import TwoCaptcha
 import csv
 import sys
 import os
@@ -408,11 +407,7 @@ def get_time():
 #need to get banner ads   
 def init_script(search_term):
     init() #initializes the colorama library
-
-    task_arg, database_arg, filename_arg = arg_parser()
     
-    #search_term = "nonstick pots"
-
     #defines how the format with which the data will be written
     sample_product = new_product("","","", "")
     header = list(sample_product.keys())
@@ -423,34 +418,11 @@ def init_script(search_term):
     crnttime = now.strftime("%H-%M-%S")
 
     print("[+]: New Instance: " + date + " " + crnttime)
-
-    """ db_string = "test_data_" + date + "_" + crnttime
-
-    if database_arg == None: 
-        print("[+]: Database name: " + db_string)
-
-        #get the dbname
-        dbname = get_database()
-        collection_name = dbname[db_string]
-
-        print("[+]: Connected to database: " + str(collection_name))
-    else: 
-        print("[+]: Database name: " + database_arg)
-
-        dbname = get_database()
-        collection_name = dbname[database_arg] """
-
     search_term_filepath = search_term.replace(" ", "_")
-
-    if filename_arg == None:
-        csv_file_name = "amazon_scrape_data_" + date + "_" + crnttime + "_" + search_term_filepath +".csv" #This defines the name of the csv file that will be created
-    else: 
-        csv_file_name = filename_arg + ".csv"
-
+    csv_file_name = "amazon_scrape_data_" + date + "_" + crnttime + "_" + search_term_filepath +".csv" #This defines the name of the csv file that will be created
     csv_file_path = FILE_PATH + "//local_data//" + csv_file_name #This defines the path to where the csv file that will be created
 
     file_creator(header, csv_file_path) #This creates the csv file
-
     print("[+]: CSV file created: " + csv_file_path)
 
     return  csv_file_path, date
@@ -518,7 +490,6 @@ def captcha_solver(browser):
             print("[+] Captcha element not found")
         except Exception as e:
             print(f"[-] Unexpected error: {e}")
-            
 
 celery_app = Celery("scraper", broker=BROKER_URL)
 
