@@ -35,9 +35,10 @@ BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 # ubuntu: BINARY_LOCATION = "/snap/firefox/current/usr/lib/firefox/firefox-bin"
 EXTENSION_FILEPATH = r"C://Users//Rufus//AppData//Roaming//Mozilla//Firefox//Profiles//ng032s5o.default-release//extensions//{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
 # ubuntu: EXTENSION_FILEPATH = "/home/brandon/snap/firefox/common/.mozilla/firefox/0tsz0chl.default/extensions/{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
+FILEPATH_TO_2CAPTCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//2captcha_api_key.txt"
 
 #get the api key from the text file in home directory
-with open("2captcha_api_key.txt", "r", encoding="UTF-8") as f:
+with open(FILEPATH_TO_2CAPTCHA_API_KEY, "r", encoding="UTF-8") as f:
     API_KEY = f.readline()
     f.close()
 
