@@ -11,11 +11,11 @@ from colorama import init, Fore
 from bs4 import BeautifulSoup
 from random import randint
 import time
+import shutil
 import urllib.request
 from datetime import datetime
 from twocaptcha import TwoCaptcha
 import csv
-import sys
 import os
 import re
 from celery import Celery
@@ -26,10 +26,10 @@ from math import floor
 # also __file__ doesn't work from the repl
 FILE_PATH = "/home/brandon/scraping_tools/amazon-search-scraper"
 USERNAME = "rufusrock"
-# don't commit password!
-PASSWORD = "######"
-ENDPOINT = "us-pr.oxylabs.io:10000"
-BROKER_URL = "redis://localhost:6379/0"
+# don't commit password! none of this proxy stuff is currently enabled - too expensive :(
+# PASSWORD = "######"
+# ENDPOINT = "us-pr.oxylabs.io:10000"
+# BROKER_URL = "redis://localhost:6379/0"
 
 BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 # ubuntu: BINARY_LOCATION = "/snap/firefox/current/usr/lib/firefox/firefox-bin"
@@ -366,14 +366,13 @@ def get_banner_data(browser, s_banner_element, bs4_banner_element, product_data)
     browser.execute_script("window.open('');")
     browser.switch_to.window(browser.window_handles[1])
     browser.get(product_data["url"])
-    #wait for the page to finish loading
+    #wait for the ad page to finish loading
     time.sleep(10)
 
     product_url = find_first_product(browser)
-
     browser.get(product_url)
     
-    #Again uses webdriverwait to make sure the page has loaded successfully
+    #Again uses webdriverwait to make sure the product page has loaded successfully
     seleniumwait = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.ID, "productTitle")))
     
     temp_html = browser.page_source #gets the html of the page
@@ -418,14 +417,21 @@ def init_script(search_term):
     crnttime = now.strftime("%H-%M-%S")
 
     print("[+]: New Instance: " + date + " " + crnttime)
-    search_term_filepath = search_term.replace(" ", "_")
-    csv_file_name = "amazon_scrape_data_" + date + "_" + crnttime + "_" + search_term_filepath +".csv" #This defines the name of the csv file that will be created
-    csv_file_path = FILE_PATH + "//local_data//" + csv_file_name #This defines the path to where the csv file that will be created
+
+    try:
+        #get filepath to current python file
+        file_path = os.path.dirname(os.path.realpath(__file__))
+        search_term_filepath = search_term.replace(" ", "_")
+        csv_file_name = "amazon_scrape_data_" + date + "_" + crnttime + "_" + search_term_filepath +".csv" #This defines the name of the csv file that will be created
+        csv_file_path = file_path + "//local_data//" + csv_file_name #This defines the path to where the csv file that will be created
+
+    except:
+        csv_file_path = FILE_PATH + "//local_data//" + csv_file_name
 
     file_creator(header, csv_file_path) #This creates the csv file
     print("[+]: CSV file created: " + csv_file_path)
 
-    return  csv_file_path, date
+    return  csv_file_path, date, csv_file_name
 
 #resets the product dictionary
 def new_product(date, search_term, location, position_within_section):
@@ -460,7 +466,7 @@ def new_product(date, search_term, location, position_within_section):
     }
     return product_dict
 
-def proxy_setup():
+""" def proxy_setup():
     wire_options = {
         'proxy': {
             "http": f"http://{USERNAME}:{PASSWORD}@{ENDPOINT}",
@@ -468,7 +474,7 @@ def proxy_setup():
         },
         'mitm_http2': False
     }
-    return wire_options
+    return wire_options """
 
 def captcha_solver(browser):
     captcha = browser.find_elements(By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")
@@ -499,23 +505,23 @@ os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 @celery_app.task
 def scraping_task(search_term):
     total_run_time = time.time() #Begin the timer for the total run time of the script
-    csv_file_path, date = init_script(search_term) #Initializes the script
+    csv_file_path, date, csv_file_name = init_script(search_term) #Initializes the script
 
     with open(csv_file_path, "a", encoding="UTF-8", newline="") as f: #opens the csv file in append mode
         writer = csv.writer(f)
         #proxies = proxy_setup()
 
         options = Options()
-        #set the browser to headless mode
-        #options.headless = True
+        #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
+        options.headless = True
+
         options.binary_location = BINARY_LOCATION #locates the firefox binary
         browser = webdriver.Firefox(options=options)
-        time.sleep(20)
-        #browser = webdriver.Firefox(options=options, seleniumwire_options=proxies) #initializes the webdriver
+        time.sleep(5)
+
         browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
         print("[+]: Fakespot addon installed")
-
-        time.sleep(10) #waits for the addon to install
+        time.sleep(20) #waits for the addon to install
 
         browser.switch_to.window(browser.window_handles[1])
         browser.close()
@@ -528,158 +534,86 @@ def scraping_task(search_term):
         browser.get("https://www.amazon.com")
         time.sleep(10)
         captcha_solver(browser)
-        time.sleep(5)
-        browser.refresh()
         time.sleep(10)
+        browser.refresh()
         counter = 0
 
-        for search_term in [search_term]:
-            print("[+]: Now working on search term: " + search_term)
-            search_bar = WebDriverWait(browser,20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox"))) #finds the amazon search bar
-            search_bar.clear() #clears the search bar
-            search_bar.send_keys(search_term) #enters the search term
-            search_bar.send_keys(Keys.RETURN) #presses the enter key
-            
-            # I got a timeout exception here
-            # Page seems to have loaded fine though
-            # selenium_products = WebDriverWait(browser,20).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "fs-grade")))
-            time.sleep(30)
+        print("[+]: Now working on search term: " + search_term)
+        search_bar = WebDriverWait(browser,20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox"))) #finds the amazon search bar
+        search_bar.clear() #clears the search bar
+        search_bar.send_keys(search_term) #enters the search term
+        search_bar.send_keys(Keys.RETURN) #presses the enter key
+        
+        # I got a timeout exception here
+        # Page seems to have loaded fine though
+        time.sleep(30)
 
-            html = browser.page_source #gets the html of the page
-            soup = BeautifulSoup(html, "html.parser") #parses the html
+        html = browser.page_source #gets the html of the page
+        soup = BeautifulSoup(html, "html.parser") #parses the html
 
-            bs4_products = soup.find_all("div", {"data-component-type": "s-search-result"}) #compiles a list of bs4 search result elements
-            s_products = browser.find_elements(By.CSS_SELECTOR, '[data-component-type="s-search-result"]') #compiles a list of selenium search result elements
+        bs4_products = soup.find_all("div", {"data-component-type": "s-search-result"}) #compiles a list of bs4 search result elements
+        s_products = browser.find_elements(By.CSS_SELECTOR, '[data-component-type="s-search-result"]') #compiles a list of selenium search result elements
 
-            #product_visbility_list = visibility_check(browser, s_products)
+        #product_visbility_list = visibility_check(browser, s_products)
 
-            carousels = soup.find_all("span",{"data-component-type": "s-searchgrid-carousel"})
-            s_carousels = browser.find_elements(By.CSS_SELECTOR, "span[data-component-type='s-searchgrid-carousel']")
-            carousel_counter = 0
+        carousels = soup.find_all("span",{"data-component-type": "s-searchgrid-carousel"})
+        s_carousels = browser.find_elements(By.CSS_SELECTOR, "span[data-component-type='s-searchgrid-carousel']")
+        carousel_counter = 0
 
-            for carousel in carousels:
-                print("[+] Carousel index: " + str(carousel_counter))
-                #gets the carousel's heading
-                section_heading = carousel.find_previous("span", {"class": "a-size-medium-plus a-color-base"}).text
-                #gets a list of the carousel's products
-                carousel_products = carousel.find_all("li",attrs={'class': lambda e: e.startswith('a-carousel-card') if e else False})
+        for carousel in carousels:
+            print("[+] Carousel index: " + str(carousel_counter))
+            #gets the carousel's heading
+            section_heading = carousel.find_previous("span", {"class": "a-size-medium-plus a-color-base"}).text
+            #gets a list of the carousel's products
+            carousel_products = carousel.find_all("li",attrs={'class': lambda e: e.startswith('a-carousel-card') if e else False})
 
-                if len(s_carousels) >= carousel_counter:
-                    s_carousel_products = s_carousels[carousel_counter].find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
-                    #carousel_visbility_list = visibility_check(browser, s_carousel_products)
-                    carousel_data = []
-                    
-                    counter = 0
-                    for product in carousel_products: 
-                        try:
-                            product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-                            print("[+] Carousel Products completed: " + str(counter +1))
-                            
-                            product_data = get_carousel_data(browser, section_heading, product_data, product, s_carousel_products[counter])
-                            data_saver(product_data, writer) #saves the data to the database and to local csv
-                        except:
-                            pass
-                           
-                        counter = counter + 1                        
-                else:
-                    break
-
-                carousel_counter += 1
-
-            video_class_prefix = 'a-section sbv-video aok-relative sbv-vertical-center-within-parent'
-            #get selenium video elements
-            s_video_elements = browser.find_elements(By.CSS_SELECTOR,"div[class*='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")
-            # video_visbility_list = visibility_check(browser, s_video_elements)
-
-            #get bs4 video elements
-            video_elements = soup.find_all('div', attrs={'class': lambda e: e.startswith(video_class_prefix) if e else False})
-
-            if video_elements != []:
-                print(Fore.LIGHTYELLOW_EX + '[+] Video elements found')
-                counter = 0
-                for video in video_elements:
-                    try:
-                        parent = s_video_elements[counter].find_element(By.XPATH, '..')
-                        while True:
-                            if "sg-row" in parent.get_attribute("class"):
-                                break
-                            parent = parent.find_element(By.XPATH, '..')
-
-                        product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-                        product_data = get_video_data(browser, s_video_elements[counter], video, product_data)
-                        product_data = get_size_stats(browser, parent, product_data)
-
-                        product_index = counter
-                        # Add the product's data to the list
-                        data_saver(product_data, writer) #saves the data to the database and to local csv
-                    except:
-                        try:
-                            browser.switch_to.window(browser.window_handles[1])
-                            browser.close()
-                            browser.switch_to.window(browser.window_handles[0])
-                        except:
-                            pass
-                        print("[-]: Error")
-                        pass
-                    counter += 1
-
-            
-            banner_ads = soup.find_all('div', {'class': 's-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width'})
-            s_banner_ads = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width']")
-
-            if banner_ads != []:
-                print(Fore.LIGHTYELLOW_EX + '[+] Banner Ads found')
-                counter = 0
-                for ad in banner_ads:
-                    try:
-                        product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-                        product_data = get_banner_data(browser, s_banner_ads[counter], ad, product_data)
-                        data_saver(product_data, writer) #saves the data to the database and to local csv
-                    except:
-                        try:
-                            browser.switch_to.window(browser.window_handles[1])
-                            browser.close()
-                            browser.switch_to.window(browser.window_handles[0])
-                        except:
-                            pass
-                        print("[-]: Error")
-                        pass
+            if len(s_carousels) >= carousel_counter:
+                s_carousel_products = s_carousels[carousel_counter].find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
+                #carousel_visbility_list = visibility_check(browser, s_carousel_products)
+                carousel_data = []
                 
-                    counter+=1
-            
+                counter = 0
+                for product in carousel_products: 
+                    try:
+                        product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
+                        print("[+] Carousel Products completed: " + str(counter +1))
+                        
+                        product_data = get_carousel_data(browser, section_heading, product_data, product, s_carousel_products[counter])
+                        data_saver(product_data, writer) #saves the data to the database and to local csv
+                    except:
+                        pass
+                        
+                    counter = counter + 1                        
+            else:
+                break
+
+            carousel_counter += 1
+
+        video_class_prefix = 'a-section sbv-video aok-relative sbv-vertical-center-within-parent'
+        #get selenium video elements
+        s_video_elements = browser.find_elements(By.CSS_SELECTOR,"div[class*='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")
+        # video_visbility_list = visibility_check(browser, s_video_elements)
+
+        #get bs4 video elements
+        video_elements = soup.find_all('div', attrs={'class': lambda e: e.startswith(video_class_prefix) if e else False})
+
+        if video_elements != []:
+            print(Fore.LIGHTYELLOW_EX + '[+] Video elements found')
             counter = 0
-            
-            for product in bs4_products:
-                
-                section_heading = "Results" #Everything here is a result
-
+            for video in video_elements:
                 try:
-                    print("[+] Product Iteration Completion Status: " + str(counter + 1) + "/" + str(len(bs4_products)))
+                    parent = s_video_elements[counter].find_element(By.XPATH, '..')
+                    while True:
+                        if "sg-row" in parent.get_attribute("class"):
+                            break
+                        parent = parent.find_element(By.XPATH, '..')
 
                     product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
+                    product_data = get_video_data(browser, s_video_elements[counter], video, product_data)
+                    product_data = get_size_stats(browser, parent, product_data)
 
-                    product_data = get_product_data(browser, product, s_products[counter], product_data) #gets the data for the product
-
-                    if product_data["average_rating"] == "ERROR":
-                         #Open a new window using the product's url
-                        browser.execute_script("window.open('');")
-                        browser.switch_to.window(browser.window_handles[1])
-                        browser.get(product_data["url"])
-                        #Again uses webdriverwait to make sure the page has loaded successfully
-                        seleniumwait = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "productTitle")))
-
-                        temp_html = browser.page_source #gets the html of the page
-                        temp_soup = BeautifulSoup(temp_html, "html.parser") #parses the html
-
-                        product_data = product_page_scraper(browser, temp_soup, product_data)
-
-                        #Close the new browser window and switch back to the original window
-                        browser.close()
-                        browser.switch_to.window(browser.window_handles[0])
-                        time.sleep(5)
-
-                    #product_page_data = product_page_scraper(browser, temp_soup, product_data) #gets the data from the product page
-
+                    product_index = counter
+                    # Add the product's data to the list
                     data_saver(product_data, writer) #saves the data to the database and to local csv
                 except:
                     try:
@@ -690,12 +624,87 @@ def scraping_task(search_term):
                         pass
                     print("[-]: Error")
                     pass
-                
                 counter += 1
+
+        
+        banner_ads = soup.find_all('div', {'class': 's-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width'})
+        s_banner_ads = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width']")
+
+        if banner_ads != []:
+            print(Fore.LIGHTYELLOW_EX + '[+] Banner Ads found')
+            counter = 0
+            for ad in banner_ads:
+                try:
+                    product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
+                    product_data = get_banner_data(browser, s_banner_ads[counter], ad, product_data)
+                    data_saver(product_data, writer) #saves the data to the database and to local csv
+                except:
+                    try:
+                        browser.switch_to.window(browser.window_handles[1])
+                        browser.close()
+                        browser.switch_to.window(browser.window_handles[0])
+                    except:
+                        pass
+                    print("[-]: Error")
+                    pass
+            
+                counter+=1
+        
+        counter = 0
+        
+        for product in bs4_products:
+            
+            section_heading = "Results" #Everything here is a result
+
+            try:
+                print("[+] Product Iteration Completion Status: " + str(counter + 1) + "/" + str(len(bs4_products)))
+
+                product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
+
+                product_data = get_product_data(browser, product, s_products[counter], product_data) #gets the data for the product
+
+                if product_data["average_rating"] == "ERROR":
+                        #Open a new window using the product's url
+                    browser.execute_script("window.open('');")
+                    browser.switch_to.window(browser.window_handles[1])
+                    browser.get(product_data["url"])
+                    #Again uses webdriverwait to make sure the page has loaded successfully
+                    seleniumwait = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "productTitle")))
+
+                    temp_html = browser.page_source #gets the html of the page
+                    temp_soup = BeautifulSoup(temp_html, "html.parser") #parses the html
+
+                    product_data = product_page_scraper(browser, temp_soup, product_data)
+
+                    #Close the new browser window and switch back to the original window
+                    browser.close()
+                    browser.switch_to.window(browser.window_handles[0])
+                    time.sleep(5)
+
+                #product_page_data = product_page_scraper(browser, temp_soup, product_data) #gets the data from the product page
+
+                data_saver(product_data, writer) #saves the data to the database and to local csv
+            except:
+                try:
+                    browser.switch_to.window(browser.window_handles[1])
+                    browser.close()
+                    browser.switch_to.window(browser.window_handles[0])
+                except:
+                    pass
+                print("[-]: Error")
+                pass
+            
+            counter += 1
 
         #exit the browser
         browser.quit()
         f.close() 
+        #copy the csv file to dropbox
+        try:
+            shutil.copyfile(csv_file_path, 'C:\\Users\\Rufus\\Dropbox\\Amazon_Scrape_1\\' + csv_file_name)
+        except:
+            print("[-] Error copying file to dropbox")
+
         total_run_time = time.time() - total_run_time
         end_string = "[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes"
         return end_string
