@@ -29,7 +29,7 @@ USERNAME = "rufusrock"
 # don't commit password! none of this proxy stuff is currently enabled - too expensive :(
 # PASSWORD = "######"
 # ENDPOINT = "us-pr.oxylabs.io:10000"
-# BROKER_URL = "redis://localhost:6379/0"
+BROKER_URL = "redis://localhost:6379/0"
 
 BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 # ubuntu: BINARY_LOCATION = "/snap/firefox/current/usr/lib/firefox/firefox-bin"
