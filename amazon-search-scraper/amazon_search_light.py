@@ -6,10 +6,11 @@ from selenium.webdriver import ActionChains
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
-from selenium.common.exceptions import ElementClickInterceptedException, NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException
 from colorama import init, Fore
 from bs4 import BeautifulSoup
-from random import randint
+import requests
+from random import randint, choice
 import time
 import shutil
 import urllib.request
@@ -36,6 +37,7 @@ BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 EXTENSION_FILEPATH = r"C://Users//Rufus//AppData//Roaming//Mozilla//Firefox//Profiles//ng032s5o.default-release//extensions//{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
 # ubuntu: EXTENSION_FILEPATH = "/home/brandon/snap/firefox/common/.mozilla/firefox/0tsz0chl.default/extensions/{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
 FILEPATH_TO_2CAPTCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//2captcha_api_key.txt"
+DROPBOX_FILEPATH = r"C://Users//Rufus//Dropbox//Amazon_Scrape_1//"
 
 #get the api key from the text file in home directory
 with open(FILEPATH_TO_2CAPTCHA_API_KEY, "r", encoding="UTF-8") as f:
@@ -369,7 +371,8 @@ def get_banner_data(browser, s_banner_element, bs4_banner_element, product_data)
     browser.get(product_data["url"])
     #wait for the ad page to finish loading
     time.sleep(10)
-
+    random_scroll(browser)
+    
     product_url = find_first_product(browser)
     browser.get(product_url)
     
@@ -477,6 +480,20 @@ def new_product(date, search_term, location, position_within_section):
     }
     return wire_options """
 
+#randomly scrolls to a point on the webpage, waits a ranodm amount of time and then scrolls back to the top
+def random_scroll(browser):
+    #get the height of the page
+    height = browser.execute_script("return document.body.scrollHeight")
+    #get a random number between 0 and the height of the page
+    random_height = randint(0, height)
+    #scroll to the random height
+    browser.execute_script("window.scrollTo(0, " + str(random_height) + ")")
+    #wait for a random amount of time
+    time.sleep(randint(1, 30))
+    #scroll back to the top
+    browser.execute_script("window.scrollTo(0, 0)")
+
+#looks for captcha and solves it
 def captcha_solver(browser):
     captcha = browser.find_elements(By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")
     if captcha:
@@ -516,10 +533,42 @@ def scraping_task(search_term):
         #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
         options.headless = True
 
+        #anti detection measures
+        options.set_preference("dom.webdriver.enabled", False)
+        options.set_preference("useAutomationExtension", False)
         options.binary_location = BINARY_LOCATION #locates the firefox binary
-        browser = webdriver.Firefox(options=options)
-        time.sleep(5)
 
+        # Initializing a list with two Useragents 
+        useragentlist = [ 
+	        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
+        ] 
+        user_agent = choice(useragentlist)
+
+
+        firefox_profile = webdriver.FirefoxProfile()
+        firefox_profile.set_preference("dom.webdriver.enabled", False)
+        firefox_profile.set_preference("useAutomationExtension", False)
+        firefox_profile.set_preference("dom.webnotifications.enabled", False)
+        firefox_profile.set_preference("dom.push.enabled", False)
+        firefox_profile.set_preference("general.useragent.override", user_agent)
+
+        browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
+        time.sleep(5)
+        
         browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
         print("[+]: Fakespot addon installed")
         time.sleep(20) #waits for the addon to install
@@ -528,8 +577,8 @@ def scraping_task(search_term):
         browser.close()
         browser.switch_to.window(browser.window_handles[0])
 
-        browser.get("https://ip.oxylabs.io/")
-        ip = browser.find_element(By.CSS_SELECTOR, "pre").text
+        #browser.get("https://ip.oxylabs.io/")
+        ip = requests.get('https://api.ipify.org').text #Gets the IP address of the proxy
         location = get_location(ip) #Gets the location of the proxy
 
         browser.get("https://www.amazon.com")
@@ -549,6 +598,7 @@ def scraping_task(search_term):
         # Page seems to have loaded fine though
         time.sleep(30)
 
+        random_scroll(browser)
         html = browser.page_source #gets the html of the page
         soup = BeautifulSoup(html, "html.parser") #parses the html
 
@@ -702,13 +752,12 @@ def scraping_task(search_term):
         f.close() 
         #copy the csv file to dropbox
         try:
-            shutil.copyfile(csv_file_path, 'C:\\Users\\Rufus\\Dropbox\\Amazon_Scrape_1\\' + csv_file_name)
+            shutil.copyfile(csv_file_path, DROPBOX_FILEPATH + csv_file_name)
         except:
             print("[-] Error copying file to dropbox")
 
         total_run_time = time.time() - total_run_time
         end_string = "[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes"
         return end_string
-
 
 #Rufus_Rock, 2022
