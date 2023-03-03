@@ -21,7 +21,7 @@ import os
 import re
 from celery import Celery
 import geocoder
-from math import floor
+
 
 # hard code this so users can change the location
 # also __file__ doesn't work from the repl
@@ -75,17 +75,17 @@ def get_location(ip):
 #gets all the relevant size information about the product from the webpage
 def get_size_stats(browser, element, product_data):
     if element.is_displayed() == True:
-        element_size = [round(element.size["width"], 2), round(element.size["height"], 2)]
+        element_size = [element.size["width"], element.size["height"]]
         element_area = element.size["width"] * element.size["height"]
         screen_area = browser.get_window_size()["width"] * browser.get_window_size()["height"]
-        element_y_coord = round(element.location["y"], 2)
-        no_of_scrolls = floor(element_y_coord /  browser.get_window_size()["height"])
-        element_x_coord = round(element.location["x"],2)
+        element_y_coord = element.location["y"]
+        no_of_scrolls = element_y_coord /  browser.get_window_size()["height"]
+        element_x_coord = element.location["x"]
         body_area = browser.find_element(By.TAG_NAME, "body").size["width"] * browser.find_element(By.TAG_NAME, "body").size["height"]
-        body_percentage = round((element_area / body_area) * 100, 2)
+        body_percentage = (element_area / body_area) * 100
 
         product_data["search_result_size"] = element_area
-        product_data["search_result_window_percentage"] = round((element_area / screen_area) * 100, 2)
+        product_data["search_result_window_percentage"] = (element_area / screen_area) * 100
         product_data["search_result_y_coord"] = element_y_coord
         product_data["search_result_x_coord"] = element_x_coord
         product_data["no_of_scrolls_for_product_visibility"] = no_of_scrolls
@@ -372,7 +372,7 @@ def get_banner_data(browser, s_banner_element, bs4_banner_element, product_data)
     #wait for the ad page to finish loading
     time.sleep(10)
     random_scroll(browser)
-    
+
     product_url = find_first_product(browser)
     browser.get(product_url)
     
@@ -426,9 +426,8 @@ def init_script(search_term):
         #get filepath to current python file
         file_path = os.path.dirname(os.path.realpath(__file__))
         search_term_filepath = search_term.replace(" ", "_")
-        csv_file_name = "amazon_scrape_data_" + date + "_" + crnttime + "_" + search_term_filepath +".csv" #This defines the name of the csv file that will be created
+        csv_file_name = search_term_filepath + ".csv" #This defines the name of the csv file that will be created
         csv_file_path = file_path + "//local_data//" + csv_file_name #This defines the path to where the csv file that will be created
-
     except:
         csv_file_path = FILE_PATH + "//local_data//" + csv_file_name
 
@@ -531,7 +530,7 @@ def scraping_task(search_term):
 
         options = Options()
         #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
-        options.headless = True
+        #options.headless = True
 
         #anti detection measures
         options.set_preference("dom.webdriver.enabled", False)
@@ -556,8 +555,8 @@ def scraping_task(search_term):
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36",
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
         ] 
-        user_agent = choice(useragentlist)
 
+        user_agent = choice(useragentlist)
 
         firefox_profile = webdriver.FirefoxProfile()
         firefox_profile.set_preference("dom.webdriver.enabled", False)
@@ -596,11 +595,14 @@ def scraping_task(search_term):
         
         # I got a timeout exception here
         # Page seems to have loaded fine though
-        time.sleep(30)
+        time.sleep(20)
 
-        random_scroll(browser)
         html = browser.page_source #gets the html of the page
         soup = BeautifulSoup(html, "html.parser") #parses the html
+
+        button = browser.find_element(By.CSS_SELECTOR, "div[class='fs-ads-button-left']")
+        button.click()
+        random_scroll(browser)
 
         bs4_products = soup.find_all("div", {"data-component-type": "s-search-result"}) #compiles a list of bs4 search result elements
         s_products = browser.find_elements(By.CSS_SELECTOR, '[data-component-type="s-search-result"]') #compiles a list of selenium search result elements
