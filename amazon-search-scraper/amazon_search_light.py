@@ -119,13 +119,15 @@ def get_product_data(browser, product, s_product, product_data):
     product_data["current_price"] = product.find("span", {"class": "a-offscreen"}).text
 
     #get the product rating
-    try:
-        rating_list = product.find("span", {"class": "a-icon-alt"}).text.split(" ")
+    
+    rating_list = product.find("span", {"class": "a-icon-alt"})
+    if rating_list != None:
+        rating_list = rating_list.text.split(" ")
         for string in rating_list:
             if "." in string:
                 product_data["average_rating"] = string
                 break
-    except:
+    else:
         product_data["average_rating"] = "ERROR"
 
     #if there is an amazon brand logo in the listing set the amazon brand status to true 
@@ -175,29 +177,31 @@ def get_product_data(browser, product, s_product, product_data):
             product_data["bundles_available"] = True
 
     #Get the Product's URL
-    try:
-        href = product.find("a",attrs={'class': lambda e: e.startswith('a-link-normal s-no-outline') if e else False}).get("href")
+    href = product.find("a",attrs={'class': lambda e: e.startswith('a-link-normal s-no-outline') if e else False})
+    if href != None:
+        href = href.get("href")
         if "amazon.com" in href:
             product_data["url"] = href
         else:
             product_data["url"] = "https://www.amazon.com" + href
-    except:
-        product_data["url"] = "Error ln 118"
+    else:
+        product_data["url"] = "ERROR"
+        
 
     #Get the Product's number of reviews
-    try:
-        product_data["no_of_reviews"] = product.find("span", {"class": "a-size-base s-underline-text"}).text.replace(",", "") 
-    except:
+    
+    no_of_reviews = product.find("span", {"class": "a-size-base s-underline-text"})
+    if no_of_reviews != None:
+        product_data["no_of_reviews"] = no_of_reviews.text.replace(",", "") 
+    else:
         product_data["no_of_reviews"] = "ERROR"
     
     #Gets the product's fakespot rating
-    try:
-        product_data["fakespot_rating"] = product.find("div", {"class": "fs-grade"}).text
-    except:
-        try:
-            product_data["fakespot_rating"] = s_product.find_elememt(By.CLASS_NAME, "fs-grade").text
-        except:
-            product_data["fakespot_rating"] = "Error; ln 132"
+    fakespot_rating = product.find("div", {"class": "fs-grade"})
+    if fakespot_rating != None:
+        product_data["fakespot_rating"] = fakespot_rating.text
+    else:
+        product_data["fakespot_rating"] = "ERROR"
 
 
     product_data = get_size_stats(browser, s_product, product_data)
@@ -207,33 +211,25 @@ def get_product_data(browser, product, s_product, product_data):
 #after product page has been loaded this scrapes key data from it
 def product_page_scraper(browser, soup, product_data):
     #if the product title is none try and get the product name again
-    try:
-        name = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "productTitle")))
+    
+    name = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "productTitle")))
+    if name != None:
         product_data["product_name"] = name.text
-    except:
-        try: 
-            product_data["product_name"] = browser.find_element(By.ID, "productTitle").text
-        except:
-            product_data["product_name"] = "Error; ln 156"
+    else:
+        product_data["product_name"] = "ERROR"
+    
     
     product_data["current_price"] = get_product_price(browser) #going to have to add the bundle detection feature here and whatever else was fucking it up
    
-    try:
-        try:
-            product_overview = soup.find("div", {"id": "productOverview_feature_div"})
-            if "Amazon Basics" in str(product_overview):
-                product_data["amazon_brand"] = True
-        except:
-            pass
-        try:
-            bylineinfo = soup.find("a", {"id": "bylineInfo"})
-            if "Amazon" in bylineinfo.text:
-                product_data["amazon_brand"] = True
-        except:
-            pass
-    except:
-        pass
+    #checks the product overview and the byline for amazon brand tags and sets the amazon brand status to true if it finds one
+    product_overview = soup.find("div", {"id": "productOverview_feature_div"})
+    if product_overview != None and "Amazon Basics" in str(product_overview):
+        product_data["amazon_brand"] = True
 
+    bylineinfo = soup.find("a", {"id": "bylineInfo"})
+    if bylineinfo != None and "Amazon" in bylineinfo.text:
+        product_data["amazon_brand"] = True
+    
     #get the average rating "div[class^='sb_add sb_adTA']")))
     rating = ""
     try:
@@ -252,8 +248,8 @@ def product_page_scraper(browser, soup, product_data):
     no_reviews = ""
     #if the number of reviews is 0 or "" look for the number of reviews on this page
     if product_data["no_of_reviews"] == "0" or product_data["no_of_reviews"] == "" or product_data["no_of_reviews"] == "ERROR":
-        try:
-            nr = soup.find("div", {"data-hook": "total-review-count"})
+        nr = soup.find("div", {"data-hook": "total-review-count"})
+        if nr != None:
             no_reviews = nr.find("span", {"class": "a-size-base a-color-secondary"}).text.split(" ")
             #find the first element in the list that contains a number
             for x in no_reviews:
@@ -271,7 +267,7 @@ def product_page_scraper(browser, soup, product_data):
                 product_data["no_of_reviews"] = "0"
             else:
                 product_data["no_of_reviews"] = no_reviews
-        except:
+        else:
             if product_data["average_rating"] == "No Customer Reviews":
                 product_data["no_of_reviews"] = "0"
             else:
@@ -291,9 +287,11 @@ def get_product_price(browser):
     html = browser.page_source
     soup = BeautifulSoup(html, "html.parser")
     sidebar = soup.find("div", {"id": "corePrice_feature_div"})
-    try:
-        price = sidebar.find("span", {"class": "a-offscreen"}).text
-    except:
+    price = sidebar.find("span", {"class": "a-offscreen"})
+
+    if price != None:
+        price = price.text
+    else:
         price = "OutofStock"
     
     return price 
