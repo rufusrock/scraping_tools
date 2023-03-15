@@ -7,7 +7,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import NoSuchElementException
-from colorama import init, Fore
 from bs4 import BeautifulSoup
 import requests
 from random import randint, choice
@@ -37,7 +36,7 @@ BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 EXTENSION_FILEPATH = r"C://Users//Rufus//AppData//Roaming//Mozilla//Firefox//Profiles//ng032s5o.default-release//extensions//{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
 # ubuntu: EXTENSION_FILEPATH = "/home/brandon/snap/firefox/common/.mozilla/firefox/0tsz0chl.default/extensions/{44df5123-f715-9146-bfaa-c6e8d4461d44}.xpi"
 FILEPATH_TO_2CAPTCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//2captcha_api_key.txt"
-DROPBOX_FILEPATH = r"C://Users//Rufus//Dropbox//Amazon_Scrape_1//"
+DROPBOX_FILEPATH = r"C://Users//Rufus//Dropbox//Amazon_Scrape_2//"
 
 #get the api key from the text file in home directory
 with open(FILEPATH_TO_2CAPTCHA_API_KEY, "r", encoding="UTF-8") as f:
@@ -103,20 +102,26 @@ def get_size_stats(browser, element, product_data):
 #used whilst iterating through search listings to get data from them
 def get_product_data(browser, product, s_product, product_data):
     #Checks if the product is an ad
-    ad = product.find_all('d', attrs={'class': lambda e: e.startswith('currentPrice') if e else False})
-    if ad != [] or "sponsored" in str(product) or "Sponsored" in str(product) or "AdHolder" in str(product["class"]):
-        if "Carousel" not in product_data["listing_type"]:
-            product_data["listing_type"] = "Search Injected Ad"
-            product_data["ad"] = True
+    sponsored_span_text = product.find_all("span", {"class": "puis-label-popover-default"})
+    if sponsored_span_text != []:
+        if "Sponsored" in sponsored_span_text[0].span.text or "AdHolder" in str(product["class"]):
+            if "Carousel" not in product_data["listing_type"]:
+                product_data["listing_type"] = "Search Injected Ad"
+                product_data["ad"] = True
 
     #get the product name
-    if product.find("span", {"class": "a-size-medium a-color-base a-text-normal"}) != None:
-        product_data["product_name"] = product.find("span", {"class": "a-size-medium a-color-base a-text-normal"}).text
+    name = product.find("span", {"class": "a-size-medium a-color-base a-text-normal"})
+    if name != None:
+        product_data["product_name"] = name.text
     else:
-        product_data["product_name"] = product.find("span", {"class": "a-size-base-plus a-color-base a-text-normal"}).text
+        name = product.find("span", {"class": "a-size-base-plus a-color-base a-text-normal"})
+        if name != None:
+            product_data["product_name"] = name.text
 
     #get the product price
-    product_data["current_price"] = product.find("span", {"class": "a-offscreen"}).text
+    current_price = product.find("span", {"class": "a-offscreen"})
+    if current_price != None:
+        product_data["current_price"] = current_price.text
 
     #get the product rating
     
@@ -218,7 +223,6 @@ def product_page_scraper(browser, soup, product_data):
     else:
         product_data["product_name"] = "ERROR"
     
-    
     product_data["current_price"] = get_product_price(browser) #going to have to add the bundle detection feature here and whatever else was fucking it up
    
     #checks the product overview and the byline for amazon brand tags and sets the amazon brand status to true if it finds one
@@ -230,16 +234,14 @@ def product_page_scraper(browser, soup, product_data):
     if bylineinfo != None and "Amazon" in bylineinfo.text:
         product_data["amazon_brand"] = True
     
-    #get the average rating "div[class^='sb_add sb_adTA']")))
-    rating = ""
-    try:
-        rating = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "span[data-hook^='rating-out-of-text']")))
+    rating = soup.find("span", {"data-hook": "rating-out-of-text"})
+    if rating != None: 
         if product_data["average_rating"] == "ERROR":
             product_data["average_rating"] = "[Click Required] " + rating.text.split(" ")[0]
         else:
             product_data["average_rating"] = rating.text.split(" ")[0]
-    except:
-        no_customer_reviews = browser.find_element(By.CSS_SELECTOR, "span[data-hook^='top-customer-reviews-title")
+    else:
+        no_customer_reviews = soup.find("span", {"data-hook":"top-customer-reviews-title"})
         if "No" in no_customer_reviews.text:
             product_data["average_rating"] = "No Customer Reviews"
         else:
@@ -283,11 +285,11 @@ def product_page_scraper(browser, soup, product_data):
 
 #Currently only used by the get_other_prices function in order to get price info from product pages - should implement solution in the product page scraper
 def get_product_price(browser):
-    s_sidebar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[id='corePrice_feature_div']")))
-    html = browser.page_source
-    soup = BeautifulSoup(html, "html.parser")
-    sidebar = soup.find("div", {"id": "corePrice_feature_div"})
-    price = sidebar.find("span", {"class": "a-offscreen"})
+    try:
+        s_sidebar = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[id='corePrice_feature_div']")))
+        price = s_sidebar.find_element(By.CSS_SELECTOR, "span[class:'a-offscreen']")
+    except:
+        price = None
 
     if price != None:
         price = price.text
@@ -300,15 +302,16 @@ def get_product_price(browser):
 def data_saver(page_data, csv_writer):
     #firstly we write the pagedata to the csv
     csv_writer.writerow(list(page_data.values()))
-    #adding google cloud integration here
 
 #gets data from carousel listing web elements and calls product page scraper once the product pages are open (clumsy implementation)
 def get_carousel_data(browser, section_heading, product_data, product, s_product):
     product_data["listing_type"] = "Carousel: " + re.sub(r'\s+', '', section_heading)
 
-    if "Rated" in section_heading or "Choice" in section_heading or "Sponsored" in str(product) or "recommendations" in section_heading or "top" in section_heading or "our" in section_heading:
-        product_data["ad"] = True  
-    
+    ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
+    #check if the section heading contains any of the keywords that indicate an ad
+    if any(x in section_heading.lower() for x in ad_section_heading_keywords):
+        product_data["ad"] = True
+
     product_data = get_product_data(browser, product, s_product, product_data)       
     return product_data
 
@@ -367,8 +370,9 @@ def get_banner_data(browser, s_banner_element, bs4_banner_element, product_data)
     browser.execute_script("window.open('');")
     browser.switch_to.window(browser.window_handles[1])
     browser.get(product_data["url"])
+
     #wait for the ad page to finish loading
-    time.sleep(10)
+    seleniumwait = WebDriverWait(browser, 10).until(EC.presence_of_element_located((By.TAG_NAME, "a")))
     random_scroll(browser)
 
     product_url = find_first_product(browser)
@@ -407,8 +411,7 @@ def get_time():
 
 #need to get banner ads   
 def init_script(search_term):
-    init() #initializes the colorama library
-    
+   
     #defines how the format with which the data will be written
     sample_product = new_product("","","", "")
     header = list(sample_product.keys())
@@ -467,16 +470,6 @@ def new_product(date, search_term, location, position_within_section):
     }
     return product_dict
 
-""" def proxy_setup():
-    wire_options = {
-        'proxy': {
-            "http": f"http://{USERNAME}:{PASSWORD}@{ENDPOINT}",
-            "https": f"http://{USERNAME}:{PASSWORD}@{ENDPOINT}",
-        },
-        'mitm_http2': False
-    }
-    return wire_options """
-
 #randomly scrolls to a point on the webpage, waits a ranodm amount of time and then scrolls back to the top
 def random_scroll(browser):
     #get the height of the page
@@ -486,7 +479,7 @@ def random_scroll(browser):
     #scroll to the random height
     browser.execute_script("window.scrollTo(0, " + str(random_height) + ")")
     #wait for a random amount of time
-    time.sleep(randint(1, 30))
+    time.sleep(randint(1, 15))
     #scroll back to the top
     browser.execute_script("window.scrollTo(0, 0)")
 
@@ -512,252 +505,242 @@ def captcha_solver(browser):
         except Exception as e:
             print(f"[-] Unexpected error: {e}")
 
+def window_check(browser):
+    try:
+        browser.switch_to.window(browser.window_handles[1])
+        browser.close()
+        browser.switch_to.window(browser.window_handles[0])
+    except:
+        pass
+
 celery_app = Celery("scraper", broker=BROKER_URL)
 
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
 # search_term = "towel stand"
 @celery_app.task
-def scraping_task(search_term):
-    total_run_time = time.time() #Begin the timer for the total run time of the script
-    csv_file_path, date, csv_file_name = init_script(search_term) #Initializes the script
+def scraping_task(search_term_batch):
+    options = Options()
+    #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
+    #options.headless = True
 
-    with open(csv_file_path, "a", encoding="UTF-8", newline="") as f: #opens the csv file in append mode
-        writer = csv.writer(f)
-        #proxies = proxy_setup()
+    #anti detection measures
+    options.set_preference("dom.webdriver.enabled", False)
+    options.set_preference("useAutomationExtension", False)
+    options.binary_location = BINARY_LOCATION #locates the firefox binary
 
-        options = Options()
-        #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
-        #options.headless = True
+    # Initializing a list with two Useragents 
+    useragentlist = [ 
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
+    ] 
 
-        #anti detection measures
-        options.set_preference("dom.webdriver.enabled", False)
-        options.set_preference("useAutomationExtension", False)
-        options.binary_location = BINARY_LOCATION #locates the firefox binary
+    user_agent = choice(useragentlist)
 
-        # Initializing a list with two Useragents 
-        useragentlist = [ 
-	        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.61 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/84.0.4147.89 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36",
-        ] 
+    firefox_profile = webdriver.FirefoxProfile()
+    firefox_profile.set_preference("dom.webdriver.enabled", False)
+    firefox_profile.set_preference("useAutomationExtension", False)
+    firefox_profile.set_preference("dom.webnotifications.enabled", False)
+    firefox_profile.set_preference("dom.push.enabled", False)
+    firefox_profile.set_preference("general.useragent.override", user_agent)
 
-        user_agent = choice(useragentlist)
+    browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
+    time.sleep(2)
+    
+    browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
+    print("[+]: Fakespot addon installed")
+    time.sleep(10) #waits for the addon to install
 
-        firefox_profile = webdriver.FirefoxProfile()
-        firefox_profile.set_preference("dom.webdriver.enabled", False)
-        firefox_profile.set_preference("useAutomationExtension", False)
-        firefox_profile.set_preference("dom.webnotifications.enabled", False)
-        firefox_profile.set_preference("dom.push.enabled", False)
-        firefox_profile.set_preference("general.useragent.override", user_agent)
+    browser.switch_to.window(browser.window_handles[1])
+    browser.close()
+    browser.switch_to.window(browser.window_handles[0])
 
-        browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
-        time.sleep(5)
-        
-        browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
-        print("[+]: Fakespot addon installed")
-        time.sleep(20) #waits for the addon to install
+    #browser.get("https://ip.oxylabs.io/")
+    ip = requests.get('https://api.ipify.org').text #Gets the IP address of the proxy
+    location = get_location(ip) #Gets the location of the proxy
 
-        browser.switch_to.window(browser.window_handles[1])
-        browser.close()
-        browser.switch_to.window(browser.window_handles[0])
+    browser.get("https://www.amazon.com")
+    time.sleep(10)
+    captcha_solver(browser)
+    time.sleep(10)
+    browser.refresh()
 
-        #browser.get("https://ip.oxylabs.io/")
-        ip = requests.get('https://api.ipify.org').text #Gets the IP address of the proxy
-        location = get_location(ip) #Gets the location of the proxy
+    for search_term in search_term_batch:
+        total_run_time = time.time() #Begin the timer for the total run time of the script
+        csv_file_path, date, csv_file_name = init_script(search_term) #Initializes the script
 
-        browser.get("https://www.amazon.com")
-        time.sleep(10)
-        captcha_solver(browser)
-        time.sleep(10)
-        browser.refresh()
-        counter = 0
+        with open(csv_file_path, "a", encoding="UTF-8", newline="") as f: #opens the csv file in append mode
+            writer = csv.writer(f)
+            counter = 0
 
-        print("[+]: Now working on search term: " + search_term)
-        search_bar = WebDriverWait(browser,20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox"))) #finds the amazon search bar
-        search_bar.clear() #clears the search bar
-        search_bar.send_keys(search_term) #enters the search term
-        search_bar.send_keys(Keys.RETURN) #presses the enter key
-        
-        # I got a timeout exception here
-        # Page seems to have loaded fine though
-        time.sleep(20)
+            print("[+]: Now working on search term: " + search_term)
+            search_bar = WebDriverWait(browser,20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox"))) #finds the amazon search bar
+            search_bar.clear() #clears the search bar
+            search_bar.send_keys(search_term) #enters the search term
+            search_bar.send_keys(Keys.RETURN) #presses the enter key
+            
+            if search_term == search_term_batch[0]:
+                seleniumwait = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "div[class='fs-ads-button-left']")))
+                seleniumwait.click()
+                print("[+] FakeSpot Ad Blocker Disabled")
 
-        html = browser.page_source #gets the html of the page
-        soup = BeautifulSoup(html, "html.parser") #parses the html
+            random_scroll(browser) #simulates user interaction and disturbs the traffic pattern
 
-        button = browser.find_element(By.CSS_SELECTOR, "div[class='fs-ads-button-left']")
-        button.click()
-        random_scroll(browser)
+            html = browser.page_source #gets the html of the page
+            soup = BeautifulSoup(html, "html.parser") #parses the html
 
-        bs4_products = soup.find_all("div", {"data-component-type": "s-search-result"}) #compiles a list of bs4 search result elements
-        s_products = browser.find_elements(By.CSS_SELECTOR, '[data-component-type="s-search-result"]') #compiles a list of selenium search result elements
+            bs4_products = soup.find_all("div", {"data-component-type": "s-search-result"}) #compiles a list of bs4 search result elements
+            s_products = browser.find_elements(By.CSS_SELECTOR, '[data-component-type="s-search-result"]') #compiles a list of selenium search result elements
 
-        #product_visbility_list = visibility_check(browser, s_products)
+            carousels = soup.find_all("span",{"data-component-type": "s-searchgrid-carousel"})
+            s_carousels = browser.find_elements(By.CSS_SELECTOR, "span[data-component-type='s-searchgrid-carousel']")
+            carousel_counter = 0
 
-        carousels = soup.find_all("span",{"data-component-type": "s-searchgrid-carousel"})
-        s_carousels = browser.find_elements(By.CSS_SELECTOR, "span[data-component-type='s-searchgrid-carousel']")
-        carousel_counter = 0
+            for carousel in carousels:
+                print("[+] Carousel index: " + str(carousel_counter))
+                #gets the carousel's heading
+                section_heading = carousel.find_previous("span", {"class": "a-size-medium-plus a-color-base"}).text
+                #gets a list of the carousel's products
+                carousel_products = carousel.find_all("li",attrs={'class': lambda e: e.startswith('a-carousel-card') if e else False})
 
-        for carousel in carousels:
-            print("[+] Carousel index: " + str(carousel_counter))
-            #gets the carousel's heading
-            section_heading = carousel.find_previous("span", {"class": "a-size-medium-plus a-color-base"}).text
-            #gets a list of the carousel's products
-            carousel_products = carousel.find_all("li",attrs={'class': lambda e: e.startswith('a-carousel-card') if e else False})
+                if len(s_carousels) >= carousel_counter:
+                    s_carousel_products = s_carousels[carousel_counter].find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
+                    #carousel_visbility_list = visibility_check(browser, s_carousel_products)
+                    carousel_data = []
+                    
+                    counter = 0
+                    for product in carousel_products: 
+                        try:
+                            product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
+                            product_data = get_carousel_data(browser, section_heading, product_data, product, s_carousel_products[counter])
+                            data_saver(product_data, writer) #saves the data to the database and to local csv
+                            print("[+] Carousel Products completed: " + str(counter +1))
+                        except:
+                            pass
+                            
+                        counter = counter + 1                        
+                else:
+                    break
 
-            if len(s_carousels) >= carousel_counter:
-                s_carousel_products = s_carousels[carousel_counter].find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
-                #carousel_visbility_list = visibility_check(browser, s_carousel_products)
-                carousel_data = []
-                
+                carousel_counter += 1
+
+            video_class_prefix = 'a-section sbv-video aok-relative sbv-vertical-center-within-parent'
+            #get selenium video elements
+            s_video_elements = browser.find_elements(By.CSS_SELECTOR,"div[class*='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")
+            # video_visbility_list = visibility_check(browser, s_video_elements)
+
+            #get bs4 video elements
+            video_elements = soup.find_all('div', attrs={'class': lambda e: e.startswith(video_class_prefix) if e else False})
+
+            if video_elements != []:
                 counter = 0
-                for product in carousel_products: 
+                for video in video_elements:
+                    try:
+                        parent = s_video_elements[counter].find_element(By.XPATH, '..')
+                        while True:
+                            if "sg-row" in parent.get_attribute("class"):
+                                break
+                            parent = parent.find_element(By.XPATH, '..')
+
+                        product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
+                        product_data = get_video_data(browser, s_video_elements[counter], video, product_data)
+                        product_data = get_size_stats(browser, parent, product_data)
+
+                        data_saver(product_data, writer) #saves the data to the database and to local csv
+                        print("[+] Video Products completed: " + str(counter +1))
+                    except:
+                        window_check(browser)
+                        print("[-]: Error")
+                        pass
+                    counter += 1
+
+            
+            banner_ads = soup.find_all('div', {'class': 's-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width'})
+            s_banner_ads = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width']")
+
+            if banner_ads != []:
+                counter = 0
+                for ad in banner_ads:
                     try:
                         product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-                        print("[+] Carousel Products completed: " + str(counter +1))
-                        
-                        product_data = get_carousel_data(browser, section_heading, product_data, product, s_carousel_products[counter])
+                        product_data = get_banner_data(browser, s_banner_ads[counter], ad, product_data)
                         data_saver(product_data, writer) #saves the data to the database and to local csv
+                        print("[+] Banner Ads completed: " + str(counter +1))
                     except:
+                        window_check(browser)
+                        print("[-]: Error")
                         pass
-                        
-                    counter = counter + 1                        
-            else:
-                break
-
-            carousel_counter += 1
-
-        video_class_prefix = 'a-section sbv-video aok-relative sbv-vertical-center-within-parent'
-        #get selenium video elements
-        s_video_elements = browser.find_elements(By.CSS_SELECTOR,"div[class*='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")
-        # video_visbility_list = visibility_check(browser, s_video_elements)
-
-        #get bs4 video elements
-        video_elements = soup.find_all('div', attrs={'class': lambda e: e.startswith(video_class_prefix) if e else False})
-
-        if video_elements != []:
-            print(Fore.LIGHTYELLOW_EX + '[+] Video elements found')
+                
+                    counter+=1
+            
             counter = 0
-            for video in video_elements:
+            
+            for product in bs4_products:
+                
+                section_heading = "Results" #Everything here is a result
+
                 try:
-                    parent = s_video_elements[counter].find_element(By.XPATH, '..')
-                    while True:
-                        if "sg-row" in parent.get_attribute("class"):
-                            break
-                        parent = parent.find_element(By.XPATH, '..')
-
                     product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-                    product_data = get_video_data(browser, s_video_elements[counter], video, product_data)
-                    product_data = get_size_stats(browser, parent, product_data)
 
-                    product_index = counter
-                    # Add the product's data to the list
-                    data_saver(product_data, writer) #saves the data to the database and to local csv
-                except:
-                    try:
+                    product_data = get_product_data(browser, product, s_products[counter], product_data) #gets the data for the product
+
+                    if product_data["average_rating"] == "ERROR" or product_data["current_price"] == "" or product_data["product_name"] == "":
+                            #Open a new window using the product's url
+                        browser.execute_script("window.open('');")
                         browser.switch_to.window(browser.window_handles[1])
+                        browser.get(product_data["url"])
+                        #Again uses webdriverwait to make sure the page has loaded successfully
+                        seleniumwait = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "productTitle")))
+
+                        temp_html = browser.page_source #gets the html of the page
+                        temp_soup = BeautifulSoup(temp_html, "html.parser") #parses the html
+
+                        product_data = product_page_scraper(browser, temp_soup, product_data)
+
+                        #Close the new browser window and switch back to the original window
                         browser.close()
                         browser.switch_to.window(browser.window_handles[0])
-                    except:
-                        pass
+
+                    #product_page_data = product_page_scraper(browser, temp_soup, product_data) #gets the data from the product page
+
+                    data_saver(product_data, writer) #saves the data to the database and to local csv
+                    print("[+] Product Iteration Completion Status: " + str(counter + 1) + "/" + str(len(bs4_products)))
+
+                except:
+                    window_check(browser)
                     print("[-]: Error")
                     pass
+
                 counter += 1
 
-        
-        banner_ads = soup.find_all('div', {'class': 's-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width'})
-        s_banner_ads = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width']")
-
-        if banner_ads != []:
-            print(Fore.LIGHTYELLOW_EX + '[+] Banner Ads found')
-            counter = 0
-            for ad in banner_ads:
-                try:
-                    product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-                    product_data = get_banner_data(browser, s_banner_ads[counter], ad, product_data)
-                    data_saver(product_data, writer) #saves the data to the database and to local csv
-                except:
-                    try:
-                        browser.switch_to.window(browser.window_handles[1])
-                        browser.close()
-                        browser.switch_to.window(browser.window_handles[0])
-                    except:
-                        pass
-                    print("[-]: Error")
-                    pass
-            
-                counter+=1
-        
-        counter = 0
-        
-        for product in bs4_products:
-            
-            section_heading = "Results" #Everything here is a result
+            f.close() 
+            #copy the csv file to dropbox
+            window_check(browser)
 
             try:
-                print("[+] Product Iteration Completion Status: " + str(counter + 1) + "/" + str(len(bs4_products)))
-
-                product_data = new_product(date, search_term, location, counter + 1) #creates a new dictionary for the product
-
-                product_data = get_product_data(browser, product, s_products[counter], product_data) #gets the data for the product
-
-                if product_data["average_rating"] == "ERROR":
-                        #Open a new window using the product's url
-                    browser.execute_script("window.open('');")
-                    browser.switch_to.window(browser.window_handles[1])
-                    browser.get(product_data["url"])
-                    #Again uses webdriverwait to make sure the page has loaded successfully
-                    seleniumwait = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "productTitle")))
-
-                    temp_html = browser.page_source #gets the html of the page
-                    temp_soup = BeautifulSoup(temp_html, "html.parser") #parses the html
-
-                    product_data = product_page_scraper(browser, temp_soup, product_data)
-
-                    #Close the new browser window and switch back to the original window
-                    browser.close()
-                    browser.switch_to.window(browser.window_handles[0])
-                    time.sleep(5)
-
-                #product_page_data = product_page_scraper(browser, temp_soup, product_data) #gets the data from the product page
-
-                data_saver(product_data, writer) #saves the data to the database and to local csv
+                shutil.copyfile(csv_file_path, DROPBOX_FILEPATH + csv_file_name)
             except:
-                try:
-                    browser.switch_to.window(browser.window_handles[1])
-                    browser.close()
-                    browser.switch_to.window(browser.window_handles[0])
-                except:
-                    pass
-                print("[-]: Error")
-                pass
-            
-            counter += 1
+                print("[-] Error copying file to dropbox")
 
-        #exit the browser
-        browser.quit()
-        f.close() 
-        #copy the csv file to dropbox
-        try:
-            shutil.copyfile(csv_file_path, DROPBOX_FILEPATH + csv_file_name)
-        except:
-            print("[-] Error copying file to dropbox")
+            total_run_time = time.time() - total_run_time
+            print("[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes")
 
-        total_run_time = time.time() - total_run_time
-        end_string = "[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes"
-        return end_string
+    #exit the browser
+    browser.quit()
+    return True
+
 
 #Rufus_Rock, 2022

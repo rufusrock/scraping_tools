@@ -16,20 +16,11 @@ files = os.listdir("local_data")
 completed_tasks = []
 #iterate through the queries and check if the query is already present in the local_data directory
 counter = 0
-for filename in files:
-    filename_list = filename.split("-")
-    filename_list = filename_list[4]
-    filename_list = filename_list.split("_")
-    del filename_list[0]
-    for x in filename_list:
-        x.replace("_", " ")
-    filename_list = " ".join(filename_list)
-    filename_list = filename_list.split(".")[0]
-    final_str = "".join(filename_list)
 
-    for query in queries:
-        if final_str in query:
-            completed_tasks.append(final_str)
+for filename in files:
+    completed_tasks.append(filename.replace("_", " "))
+    
+tasks = queries - completed_tasks
 
 country = "us"
 cities = ["atl", "chi", "dal", "den", "hou", "lax", "mia", "nyc", "phx", "qas","rag", "slc", "sjc", "uyk", "sea"]
@@ -38,17 +29,22 @@ import random
 city = random.choice(cities)
 
 counter = 0
-for query in queries:
-    if query not in completed_tasks and query != "search_term" and "-" not in query: #need to fix this last criteria BUG
+query_batch = []
+for query in tasks:
+    if query != "search_term": 
         counter = counter + 1
-        
-        result = scraping_task.apply_async(args=[query])
-        print(result)
-        time.sleep(15) # gives each instance time to start
+        query_batch.append(query)
 
-        if counter % 4 == 0:
-            time.sleep(180) #tries to roughly batch the tasks into 4 (doesn't really matter because celery is async
-            #os.system("mullvad relay set location " + country + " " + random.choice(cities)) uncomment if you have mullvad vpn
+        if counter % 10 == 0:
+            print("[+] Sending Batch of " + str(len(query_batch)) + " to Celery")
+            for x in query_batch:
+                print("[+] Batch contains: " + x)
+            result = scraping_task.apply_async(args=[query_batch])
+            query_batch = []
+            print(result)
+            if counter % 40 == 0:
+                time.sleep(180) #tries to roughly batch the tasks into 4 (doesn't really matter because celery is async
+                os.system("mullvad relay set location " + country + " " + random.choice(cities)) 
 
             
 
