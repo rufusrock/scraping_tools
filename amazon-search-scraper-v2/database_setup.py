@@ -45,21 +45,21 @@ c.execute('''CREATE TABLE products (
                 review_four_text TEXT,
                 review_four_rating REAL,
                 review_five_text TEXT,
-                review_five_rating REAL,
+                review_five_rating REAL
             )''')
 
 # Create the 'search_terms' table
 c.execute('''CREATE TABLE search_terms (
                 id INTEGER PRIMARY KEY,
                 search_term TEXT NOT NULL UNIQUE,
-                main_category TEXT NOT NULL UNIQUE,
+                main_category TEXT NOT NULL UNIQUE
             )''')
 
 # Create the 'locations' table
 c.execute('''CREATE TABLE locations (
                 id INTEGER PRIMARY KEY,
-                location TEXT NOT NULL UNIQUE
-                ip_address TEXT NOT NULL UNIQUE,
+                location TEXT NOT NULL UNIQUE,
+                ip_address TEXT NOT NULL UNIQUE
             )''')
 
 # Create the 'search_results' table
