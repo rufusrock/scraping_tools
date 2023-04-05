@@ -18,7 +18,7 @@ import csv
 import os
 import subprocess
 import re
-import sqlite3
+from database_tools import *
 
 FILEPATH = "C://Users//Rufus//scripts//scraping_tools//amazon-search-scraper-v2"
 BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
@@ -125,21 +125,21 @@ def get_search_result_data(browser, search_result, product_data):
     #if there is a prime logo in the listing set the prime search status to true
     prime_logo = search_result.find_element(By.CSS_SELECTOR, "i.a-icon.a-icon-prime.a-icon-medium")
     if prime_logo:
-        product_data["prime_search_label_present"] = True
+        product_data["prime"] = True
     
     #look for best seller icon in product listing and set best seller status to true if it is found   
     icon_element = search_result.find_element(By.CSS_SELECTOR, "span.a-badge-label-inner.a-text-ellipsis")
     if icon_element:
         if "Best" in icon_element.find_element(By.CSS_SELECTOR, "span").text:
-            product_data["best_seller_search_label_present"] = True
+            product_data["best_seller"] = True
         elif "Amazon" in icon_element.find_element(By.CSS_SELECTOR, "span").text:
-            product_data["amazons_choice_search_label_present"] = True
+            product_data["amazons_choice"] = True
     
     #look for a limited time deal icon in the product listing and set limited time deal status to true if it is found
     limited_time_deal = search_result.find_element(By.CSS_SELECTOR, "span[data-a-badge-color='sx-lightning-deal-red']")
     if limited_time_deal:
         if limited_time_deal.find_element(By.CSS_SELECTOR, "span.a-badge-text").text:
-            product_data["limited_time_deal_search_label_present"] = True
+            product_data["limited_time_deal"] = True
     
     #look for a save coupon icon in the product listing and set save coupon status to true if it is found
     save_coupon = search_result.find_element(By.CSS_SELECTOR, "span[class='a-size-base s-highlighted-text-padding aok-inline-block s-coupon-highlight-color']")
@@ -148,7 +148,7 @@ def get_search_result_data(browser, search_result, product_data):
             save_string = save_coupon.text.split(" ")
             for part in save_string:
                 if "$" in part or "%" in part:
-                    product_data["save_coupon_search_label_present"] = part
+                    product_data["save_coupon"] = part
                     break
 
     #check if small business icon is present in the product listing and set small business status to true if it is found
@@ -183,10 +183,9 @@ def get_search_result_data(browser, search_result, product_data):
     #Get the Product's number of reviews    
     no_of_reviews = search_result.find_element(By.CSS_SELECTOR, "span.a-size-base.s-underline-text")
     if no_of_reviews:
-        product_data["no_of_reviews"] = no_of_reviews.text.replace(",", "") 
+        product_data["no_of_ratings"] = no_of_reviews.text.replace(",", "") 
     else:
-        product_data["no_of_reviews"] = "ERROR"
-    
+        product_data["no_of_ratings"] = "ERROR"
 
     product_data = get_size_stats(browser, search_result, product_data)
 
@@ -355,19 +354,12 @@ def option_combo_count(browser, twister):
             possible_combos = button_combination_count(buttons)
             return len(possible_combos)  
 
-def get_unscraped_search_terms():
-    with sqlite3.connect("amazon_search_scrape.db") as conn:
-        c = conn.cursor()
-        c.execute('''SELECT id, search_term FROM search_terms WHERE NOT EXISTS (
-            SELECT 1 FROM search_results WHERE product_data.search_term_id = search_terms.id
-        )''')
-        return c.fetchall()
+
     
-def create_search_result_dict(search_term_id, location):
+def create_search_result_dict(search_term_id):
     search_result = {
         "time": time.time(),
-        "search_term_id": search_term_id,
-        "location": location, 
+        "search_term_id": search_term_id, 
         "position_within_listing_type": None, 
         "ad": None,
         "listing_type": None,
@@ -389,6 +381,8 @@ def create_search_result_dict(search_term_id, location):
         "no_of_scrolls_for_visibility": None,
     }
     return search_result
+
+
 
 def main():
     options = Options()
@@ -432,17 +426,17 @@ def main():
 
     browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
 
-    network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
-    location = network_info.split("in")[-1].strip()
-    mullvad_node = network_info.split(" ")[2].strip()
-
-    print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
-
     browser.get("https://www.amazon.com")
 
+    total_run_time = time.time()
     unscraped_search_terms = get_unscraped_search_terms()
     for search_term_id, search_term in unscraped_search_terms:
+        network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
+        location = network_info.split("in")[-1].strip()
+        mullvad_node = network_info.split(" ")[2].strip()
+        print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
         print(f"[+] Scraping search term {search_term}")
+        update_search_term(search_term_id, location)
         search_bar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
         search_bar.clear()
         search_bar.send_keys(search_term)
@@ -452,11 +446,64 @@ def main():
         carousels = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "span[data-componenet-type='s-searchgrid-carousel']")))
         video_elements = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")))
         banner_elements = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large Adholder s-flex-full-width']")))
-
         
+        result_position = 1
+        for result in search_results:
+            listing_type = "Results"
+            search_result = create_search_result_dict(search_term_id)
+            search_result = get_search_result_data(browser, result, search_result)
+            search_result["listing_type"] = listing_type
+            search_result["product_position"] = result_position
+            print(f"[+] Scraping search result {result_position}")
+            insert_search_result(search_result)
+            result_position += 1
 
+        for carousel in carousels:
+            if carousel.is_displayed():
+                listing_type = carousel.find_element_by_xpath("./preceding-sibling::span[@class='a-size-medium-plus a-color-base']")
+                carousel_products = carousel.find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
 
-    return True
+                product_position = 1
+                for product in carousel_products:
+                    print("[+] Scraping carousel product")
+                    search_result = create_search_result_dict(search_term_id)
+                    search_result["listing_type"] = "Carousel: " + re.sub(r'\s+', '', listing_type.text)
+                    ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
+                    if any(x in listing_type.lower() for x in ad_section_heading_keywords):
+                        search_result["ad"] = True
+
+                    search_result = get_search_result_data(browser, product, search_result)
+                    search_result["positin_within_listing_type"] = product_position
+                    product_position += 1
+                    insert_search_result(search_result)
+
+        for video_element in video_elements:
+            if video_element.is_displayed():
+                search_result = create_search_result_dict(search_term_id)
+                parent = video_element.find_element(By.XPATH, '..')
+                while True:
+                    if "sg-row" in parent.get_attribute("class"):
+                        break
+                    parent = parent.find_element(By.XPATH, '..')
+    
+                #product_data = get_video_data(browser, s_video_elements[counter], video, product_data)
+                product_data = get_size_stats(browser, parent, product_data)
+                insert_search_result(search_result)
+
+                print("[+] Video Product completed")
+
+        for banner_element in banner_elements:
+            if banner_element.is_displayed():
+                search_result = create_search_result_dict(search_term_id)
+                search_result["ad"] = True
+                search_result["listing_type"] = "Banner"
+                #product_page_scraper_after_getting link
+                insert_search_result(search_result)
+
+        total_run_time = time.time() - total_run_time
+        print("[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes")
+    
+    browser.quit()
 
 if __name__ == "__main__":
     main()
