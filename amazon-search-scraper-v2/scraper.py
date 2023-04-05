@@ -362,7 +362,33 @@ def get_unscraped_search_terms():
             SELECT 1 FROM search_results WHERE product_data.search_term_id = search_terms.id
         )''')
         return c.fetchall()
-
+    
+def create_search_result_dict(search_term_id, location):
+    search_result = {
+        "time": time.time(),
+        "search_term_id": search_term_id,
+        "location": location, 
+        "position_within_listing_type": None, 
+        "ad": None,
+        "listing_type": None,
+        "average_rating": None,
+        "no_of_ratings": None,
+        "save_coupon": None,
+        "bundles_available": None,
+        "limited_time_deal": None,
+        "amazon_choice": None,
+        "best_seller": None,
+        "prime": None,
+        "url": None,
+        "small_business": None,
+        "search_result_size": None,
+        "search_result_window_percentage": None,
+        "search_result_html_body_percentage": None,
+        "search_result_y_coord": None,
+        "search_result_x_coord": None,
+        "no_of_scrolls_for_visibility": None,
+    }
+    return search_result
 
 def main():
     options = Options()
@@ -422,10 +448,12 @@ def main():
         search_bar.send_keys(search_term)
         search_bar.send_keys(Keys.RETURN)
 
-        search_results = browser.find_elements(By.CSS_SELECTOR, "div[data-component-type='s-search-result']")
+        search_results = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']")))
+        carousels = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "span[data-componenet-type='s-searchgrid-carousel']")))
+        video_elements = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")))
+        banner_elements = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large Adholder s-flex-full-width']")))
 
-        carousels = browser.find_elements(By.CSS)
-
+        
 
 
     return True
