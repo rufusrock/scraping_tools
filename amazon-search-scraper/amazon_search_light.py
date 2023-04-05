@@ -522,7 +522,7 @@ os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 def scraping_task(search_term_batch):
     options = Options()
     #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
-    options.headless = True
+    options.headless = False
 
     #anti detection measures
     options.set_preference("dom.webdriver.enabled", False)
@@ -560,10 +560,11 @@ def scraping_task(search_term_batch):
     browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
     time.sleep(2)
     
-    browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
-    print("[+]: Fakespot addon installed")
-    time.sleep(10) #waits for the addon to install
     try:
+        browser.install_addon(EXTENSION_FILEPATH, temporary=True) #Installs the fakespot addon
+        print("[+]: Fakespot addon installed")
+        time.sleep(10) #waits for the addon to install
+        
         browser.switch_to.window(browser.window_handles[1])
         browser.close()
         browser.switch_to.window(browser.window_handles[0])
@@ -612,7 +613,12 @@ def scraping_task(search_term_batch):
                 for carousel in carousels:
                     print("[+] Carousel index: " + str(carousel_counter))
                     #gets the carousel's heading
-                    section_heading = carousel.find_previous("span", {"class": "a-size-medium-plus a-color-base"}).text
+                    section_heading = carousel.find_previous("span", {"class": "a-size-medium-plus a-color-base"})
+                    if section_heading != None:
+                        section_heading = section_heading.text
+                    else:
+                        section_heading = "Carousel"
+
                     #gets a list of the carousel's products
                     carousel_products = carousel.find_all("li",attrs={'class': lambda e: e.startswith('a-carousel-card') if e else False})
 
@@ -743,7 +749,8 @@ def scraping_task(search_term_batch):
         return True
     except:
         browser.quit()
-        return False
+        return False 
+    
 
 
-#Rufus_Rock, 2022
+    #Rufus_Rock, 2022

@@ -56,29 +56,31 @@ cities = ["atl", "chi", "dal", "den", "hou", "lax", "mia", "nyc", "phx", "qas","
 counter = 0
 query_batch = []
 threads = 4
-batch_size = 10
-for query in tasks:
-    if query != "search_term": 
-        counter = counter + 1
-        query_batch.append(query)
+batch_size = 4
 
-        if counter % batch_size == 0:
-            print("[+] Sending Batch of " + str(len(query_batch)) + " to Celery")
-            for x in query_batch:
-                print("[+] Batch contains: " + x)
-            result = scraping_task.apply_async(args=[query_batch])
-            query_batch = []
-            print(result)
-            if counter % (batch_size * threads) == 0:
-                todo_counter = todo_counter - (batch_size * threads)
-                completed_counter = completed_counter + (batch_size * threads)
-                print("[+] Completed Tasks: " + str(completed_counter))
-                print("[-] TODO Tasks: " + str(todo_counter))
-                for z in range(0, 2):
-                    time.sleep(500) #tries to roughly batch the tasks into 4 (doesn't really matter because celery is async
-                    os.system("mullvad relay set location " + country + " " + random.choice(cities))
+while todo_counter > 0:
+    for query in tasks:
+        if query != "search_term": 
+            counter = counter + 1
+            query_batch.append(query)
+
+            if counter % batch_size == 0:
+                print("[+] Sending Batch of " + str(len(query_batch)) + " to Celery")
+                for x in query_batch:
+                    print("[+] Batch contains: " + x)
+                result = scraping_task.apply_async(args=[query_batch])
+                query_batch = []
+                print(result)
+                if counter % (batch_size * threads) == 0:
+                    todo_counter = todo_counter - (batch_size * threads)
+                    completed_counter = completed_counter + (batch_size * threads)
+                    print("[+] Completed Tasks: " + str(completed_counter))
+                    print("[-] TODO Tasks: " + str(todo_counter))
+                    for z in range(0, 2):
+                        time.sleep(100) #tries to roughly batch the tasks into 4 (doesn't really matter because celery is async
+                        os.system("mullvad relay set location " + country + " " + random.choice(cities))
+
+                    
 
             
-
-        
         
