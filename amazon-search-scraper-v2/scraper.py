@@ -22,7 +22,7 @@ import sqlite3
 
 FILEPATH = "C://Users//Rufus//scripts//scraping_tools//amazon-search-scraper-v2"
 BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
-FILEPATH_TO_2CATPCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//2captcha_api_key.txt"
+FILEPATH_TO_2CATPCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//credentials.txt"
 
 #get the api key from the text file in home directory
 with open(FILEPATH_TO_2CATPCHA_API_KEY, "r", encoding="UTF-8") as f:
@@ -30,13 +30,6 @@ with open(FILEPATH_TO_2CATPCHA_API_KEY, "r", encoding="UTF-8") as f:
     f.close()
 
 TWOCAPTCHA_API_KEY = os.getenv("APIKEY_2CAPTCHA", API_KEY)
-
-#Gets the users location using IP and geocoder library
-def get_location(ip):
-    g = geocoder.ip(ip)
-    location = g.city + ", " + g.country
-    print("[+]: Location: " + location)
-    return location
 
 #gets all the relevant size information about the product from the webpage
 def get_size_stats(browser, element, product_data):
@@ -374,7 +367,7 @@ def get_unscraped_search_terms():
 def main():
     options = Options()
     #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
-    options.headless = False
+    #options.add_argument("-headless")
 
     #anti detection measures
     options.set_preference("dom.webdriver.enabled", False)
@@ -419,9 +412,19 @@ def main():
 
     print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
 
+    browser.get("https://www.amazon.com")
+
     unscraped_search_terms = get_unscraped_search_terms()
     for search_term_id, search_term in unscraped_search_terms:
         print(f"[+] Scraping search term {search_term}")
+        search_bar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
+        search_bar.clear()
+        search_bar.send_keys(search_term)
+        search_bar.send_keys(Keys.RETURN)
+
+        search_results = browser.find_elements(By.CSS_SELECTOR, "div[data-component-type='s-search-result']")
+
+        carousels = browser.find_elements(By.CSS)
 
 
 
