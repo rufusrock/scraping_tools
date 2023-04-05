@@ -1,4 +1,5 @@
 import sqlite3
+import csv
 
 conn = sqlite3.connect('amazon_search_scrape.db')
 c = conn.cursor()
@@ -16,6 +17,7 @@ c.execute('''CREATE TABLE products (
                 prime_product_page BOOLEAN,
                 fakespot_rating REAL,
                 unit_price REAL,
+                alternate_product_options_available BOOLEAN,
                 no_possible_product_configurations INTEGER,
                 amazon_brand TEXT,
                 shipping_price REAL,
@@ -59,7 +61,8 @@ c.execute('''CREATE TABLE search_terms (
 c.execute('''CREATE TABLE locations (
                 id INTEGER PRIMARY KEY,
                 location TEXT NOT NULL UNIQUE,
-                ip_address TEXT NOT NULL UNIQUE
+                ip_address TEXT NOT NULL UNIQUE,
+                MULLVAD_NODE TEXT NOT NULL UNIQUE
             )''')
 
 # Create the 'search_results' table
@@ -92,6 +95,35 @@ c.execute('''CREATE TABLE search_results (
                 FOREIGN KEY (product_id) REFERENCES products (id)
             )''')
 
+#insert our list of search terms and main_categories from the csv
+def insert_search_terms_from_csv():
+    filename = "queries.csv"
+    with open(filename, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            search_term = row["query"]
+            main_category = row["category"]
+            insert_search_term(search_term, main_category)
+
+def insert_search_term(search_term, main_category):
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
+        c = conn.cursor()
+        c.execute("INSERT OR IGNORE INTO search_terms (search_term, main_category) VALUES (?,?)", (search_term, main_category))
+        conn.commit()
+        c.execute("SELECT id FROM search_terms WHERE search_term = ?", (search_term,))
+        return c.fetchone()[0]
+
+def print_search_terms():
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
+        c = conn.cursor()
+        c.execute("SELECT id, search_term FROM search_terms")
+        search_terms = c.fetchall()
+        print("[+] Search Terms: ")
+        for term_id, term in search_terms:
+            print(f"{term_id}: {term}")
+
+insert_search_terms_from_csv()
+print_search_terms()
 # Commit the changes and close the connection
 conn.commit()
 conn.close()
