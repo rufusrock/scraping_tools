@@ -4,8 +4,9 @@ import csv
 conn = sqlite3.connect('amazon_search_scrape.db')
 c = conn.cursor()
 
+
 # Create the 'products' table
-c.execute('''CREATE TABLE products (
+c.execute('''CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY,
                 product_name TEXT NOT NULL,
                 url TEXT NOT NULL,
@@ -51,25 +52,16 @@ c.execute('''CREATE TABLE products (
             )''')
 
 # Create the 'search_terms' table
-c.execute('''CREATE TABLE search_terms (
+c.execute('''CREATE TABLE IF NOT EXISTS search_terms (
                 search_term TEXT PRIMARY KEY,
                 main_category TEXT NOT NULL,
                 location TEXT NOT NULL,
                 mullvad_node TEXT NOT NULL,
                 date_completed TEXT
             )''')
-# Create the 'product_scrape_details' table
-c.execute('''CREATE TABLE product_scrape_details (
-                id INTEGER PRIMARY KEY,
-                time TEXT NOT NULL,
-                date TEXT NOT NULL,
-                location TEXT,
-                search_term_id INTEGER
-            )''')
-
 
 # Create the 'search_results' table
-c.execute('''CREATE TABLE search_results (
+c.execute('''CREATE TABLE IF NOT EXISTS search_results (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
                 search_term_id TEXT,
@@ -95,6 +87,7 @@ c.execute('''CREATE TABLE search_results (
                 no_of_scrolls_for_visibility INTEGER,
                 FOREIGN KEY (search_term_id) REFERENCES search_terms (search_term)
             )''')
+
 
 #insert our list of search terms and main_categories from the csv
 def insert_search_terms_from_csv():
@@ -127,6 +120,7 @@ def print_search_terms():
 
 insert_search_terms_from_csv()
 print_search_terms()
+
 # Commit the changes and close the connection
 conn.commit()
 conn.close()
