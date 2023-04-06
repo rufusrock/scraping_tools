@@ -1,17 +1,16 @@
 import datetime
 import sqlite3
 
-def update_search_term(search_term_id, location):
+def update_search_term(search_term_id, location, mullvad_node):
     date_completed = datetime.datetime.now().strftime("%Y-%m-%d")
     with sqlite3.connect('ecommerce.db') as conn:
         c = conn.cursor()
         c.execute('''UPDATE search_terms
-                     SET location = ?, date_completed = ?
-                     WHERE id = ?''', (location, date_completed, search_term_id))
+                     SET location = ?, date_completed = ?, Mullvad_node = ?
+                     WHERE id = ?''', (location, date_completed, search_term_id, mullvad_node))
         conn.commit()
 
 def insert_search_result(search_result):
-
     with sqlite3.connect('ecommerce.db') as conn:
         c = conn.cursor()
         c.execute('''INSERT INTO search_results (

@@ -7,19 +7,19 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import NoSuchElementException
-from bs4 import BeautifulSoup
 import requests
 from random import randint, choice
 import time
-import shutil
 import urllib.request
 from datetime import datetime
 from twocaptcha import TwoCaptcha
-import csv
 import os
 import re
-from celery import Celery
-import geocoder
+
+
+FILEPATH = "C://Users//Rufus//scripts//scraping_tools//amazon-search-scraper-v2"
+BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
+FILEPATH_TO_2CATPCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//credentials.txt"
 
 def button_combination_count(lists):
     if not isinstance(lists, list) or not all(isinstance(sublist, list) and sublist for sublist in lists) or lists == []:
@@ -196,13 +196,11 @@ def product_page_scraper(browser, soup, product_data):
     try:
         twister = browser.find_element(By.CSS_SELECTOR, "div[id='twister_feature_div']")
         product_data["alternate_product_options_available"] = True
-
         product_data["no_possible_product_configurations"] = option_combo_count(browser, twister)
         
     except NoSuchElementException:
         product_data["alternate_product_options_available"] = False
-        product_data["no_possible_product_configurations"] = None
-    
+        product_data["no_possible_product_configurations"] = None    
 
     return product_data
 
