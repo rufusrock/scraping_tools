@@ -107,7 +107,7 @@ def insert_search_terms_from_csv():
             insert_search_term(search_term, main_category)
 
 def insert_search_term(search_term, main_category):
-    with sqlite3.connect('ecommerce.db') as conn:
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
         c = conn.cursor()
         try:
             c.execute("INSERT INTO search_terms (search_term, main_category) VALUES (?, ?)",
@@ -115,7 +115,6 @@ def insert_search_term(search_term, main_category):
             conn.commit()
         except sqlite3.IntegrityError:
             pass  # Search term already exists, do nothing
-
 
 def print_search_terms():
     with sqlite3.connect('amazon_search_scrape.db') as conn:
