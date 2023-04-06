@@ -63,7 +63,6 @@ c.execute('''CREATE TABLE product_scrape_details (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
                 date TEXT NOT NULL,
-                product_id INTEGER,
                 location TEXT,
                 search_term_id INTEGER
             )''')
@@ -73,7 +72,7 @@ c.execute('''CREATE TABLE product_scrape_details (
 c.execute('''CREATE TABLE search_results (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
-                search_term_id INTEGER,
+                search_term_id TEXT,
                 position_within_listing_type INTEGER,
                 ad BOOLEAN,
                 listing_type TEXT,
@@ -94,9 +93,7 @@ c.execute('''CREATE TABLE search_results (
                 search_result_y_coord REAL,
                 search_result_x_coord REAL,
                 no_of_scrolls_for_visibility INTEGER,
-                FOREIGN KEY (search_term_id) REFERENCES search_terms (id),
-                FOREIGN KEY (location_id) REFERENCES product_scrape_details (id),
-                FOREIGN KEY (product_id) REFERENCES products (id)
+                FOREIGN KEY (search_term_id) REFERENCES search_terms (search_term)
             )''')
 
 #insert our list of search terms and main_categories from the csv

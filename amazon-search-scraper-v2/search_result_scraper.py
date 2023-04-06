@@ -31,6 +31,28 @@ with open(FILEPATH_TO_2CATPCHA_API_KEY, "r", encoding="UTF-8") as f:
 
 TWOCAPTCHA_API_KEY = os.getenv("APIKEY_2CAPTCHA", API_KEY)
 
+#looks for captcha and solves it
+def captcha_solver(browser):
+    captcha = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")))
+    if captcha:
+        solver = TwoCaptcha(TWOCAPTCHA_API_KEY)
+        try:
+            print("[+] Solving Captcha")
+            image_url = captcha[0].find_element(By.TAG_NAME, "img").get_attribute("src")
+            # Download the captcha image and save it to a file
+            urllib.request.urlretrieve(image_url, "captcha.jpg")
+            result = solver.normal("captcha.jpg")
+            print(result)
+            os.remove("captcha.jpg")
+            text_form = browser.find_element(By.CSS_SELECTOR, "input[id='captchacharacters']")
+            text_form.clear()
+            text_form.send_keys(result["code"].capitalize())
+            text_form.send_keys(Keys.RETURN)
+        except NoSuchElementException:
+            print("[+] Captcha element not found")
+        except Exception as e:
+            print(f"[-] Unexpected error: {e}")
+
 #gets all the relevant size information about the product from the webpage
 def get_size_stats(browser, element, product_data):
     if element.is_displayed() == True:
@@ -58,7 +80,6 @@ def get_size_stats(browser, element, product_data):
         product_data["search_result_html_body_percentage"] = "Not Visible"
 
     return product_data 
-
 
 def get_search_result_data(browser, search_result, product_data):
     #Checks if the product is an ad
@@ -215,13 +236,10 @@ def get_search_result_data(browser, search_result, product_data):
     product_data = get_size_stats(browser, search_result, product_data)
 
     return product_data
-
-
     
-def create_search_result_dict(search_term_id):
+def create_search_result_dict():
     search_result = {
         "time": time.time(),
-        "search_term_id": search_term_id, 
         "position_within_listing_type": None, 
         "ad": None,
         "listing_type": None,
@@ -289,16 +307,21 @@ def main():
 
     browser.get("https://www.amazon.com")
 
+    captcha_solver(browser)
+
     total_run_time = time.time()
     unscraped_search_terms = get_unscraped_search_terms()
-    for search_term_id, search_term in unscraped_search_terms:
+    for (search_term,) in unscraped_search_terms:
+
         network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
         location = network_info.split("in")[-1].strip()
         mullvad_node = network_info.split(" ")[2].strip()
 
         print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
         print(f"[+] Scraping search term {search_term}")
-        update_search_term(search_term_id, location, mullvad_node)
+
+        update_search_term(search_term, location, mullvad_node)
+
         search_bar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
         search_bar.clear()
         search_bar.send_keys(search_term)
@@ -310,12 +333,13 @@ def main():
         banner_elements = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large Adholder s-flex-full-width']")))
         
         result_position = 1
+
         for result in search_results:
             listing_type = "Results"
-            search_result = create_search_result_dict(search_term_id)
-            search_result = get_search_result_data(browser, result, search_result)
+            search_result = create_search_result_dict()
             search_result["listing_type"] = listing_type
             search_result["product_position"] = result_position
+            search_result = get_search_result_data(browser, result, search_result)
             print(f"[+] Scraping search result {result_position}")
             insert_search_result(search_result)
             result_position += 1
@@ -324,44 +348,73 @@ def main():
             if carousel.is_displayed():
                 listing_type = carousel.find_element_by_xpath("./preceding-sibling::span[@class='a-size-medium-plus a-color-base']")
                 carousel_products = carousel.find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
-
                 product_position = 1
                 for product in carousel_products:
                     print("[+] Scraping carousel product")
-                    search_result = create_search_result_dict(search_term_id)
+                    search_result = create_search_result_dict()
                     search_result["listing_type"] = "Carousel: " + re.sub(r'\s+', '', listing_type.text)
                     ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
                     if any(x in listing_type.lower() for x in ad_section_heading_keywords):
                         search_result["ad"] = True
-
-                    search_result = get_search_result_data(browser, product, search_result)
                     search_result["positin_within_listing_type"] = product_position
+                    search_result = get_search_result_data(browser, product, search_result)
                     product_position += 1
-                    
+                    print("[+] Inserting carousel product")
                     insert_search_result(search_result)
 
+        video_position = 1
         for video_element in video_elements:
             if video_element.is_displayed():
-                search_result = create_search_result_dict(search_term_id)
+                search_result = create_search_result_dict()
+
+                search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
+                search_result["ad"] = True
+                search_result["listing_type"] = "Video" 
+                search_result["position_within_listing_type"] = video_position
+                search_result["amazons_choice"] = "NA"
+                search_result["best_seller"] = "NA"
+                search_result["prime"] = "NA"
+                search_result["name"] = "NA"
+                search_result["save_coupon"] = "NA"
+                search_result["limited_time_deal"] = "NA"
+                search_result["bundles_available"] = "NA"
+                search_result["small_business"] = "NA"
+
                 parent = video_element.find_element(By.XPATH, '..')
                 while True:
                     if "sg-row" in parent.get_attribute("class"):
                         break
                     parent = parent.find_element(By.XPATH, '..')
     
-                #product_data = get_video_data(browser, s_video_elements[counter], video, product_data)
-                product_data = get_size_stats(browser, parent, product_data)
+                search_result = get_size_stats(browser, video_element, search_result)
+
                 insert_search_result(search_result)
 
                 print("[+] Video Product completed")
+                video_position += 1
 
+        banner_position = 1
         for banner_element in banner_elements:
             if banner_element.is_displayed():
-                search_result = create_search_result_dict(search_term_id)
+                search_result = create_search_result_dict()
+
+                search_result["url"] = banner_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
                 search_result["ad"] = True
                 search_result["listing_type"] = "Banner"
-                #product_page_scraper_after_getting link
+                search_result["amazons_choice"] = "NA"
+                search_result["best_seller"] = "NA"
+                search_result["prime"] = "NA"
+                search_result["name"] = "NA"
+                search_result["save_coupon"] = "NA"
+                search_result["limited_time_deal"] = "NA"
+                search_result["bundles_available"] = "NA"
+                search_result["small_business"] = "NA"
+                search_result["positin_within_listing_type"] = banner_position
+                search_result = get_size_stats(browser, banner_element, search_result)
+
                 insert_search_result(search_result)
+                print("[+] Banner Product completed")
+                banner_position += 1
 
         total_run_time = time.time() - total_run_time
         print("[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes")
