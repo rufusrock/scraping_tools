@@ -33,7 +33,7 @@ TWOCAPTCHA_API_KEY = os.getenv("APIKEY_2CAPTCHA", API_KEY)
 
 #looks for captcha and solves it
 def captcha_solver(browser):
-    captcha = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")))
+    captcha = WebDriverWait(browser, 20).until(EC.presence_of_elements_located((By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")))
     if captcha:
         solver = TwoCaptcha(TWOCAPTCHA_API_KEY)
         try:

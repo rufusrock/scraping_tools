@@ -16,10 +16,16 @@ from twocaptcha import TwoCaptcha
 import os
 import re
 
-
 FILEPATH = "C://Users//Rufus//scripts//scraping_tools//amazon-search-scraper-v2"
 BINARY_LOCATION = r"C://Program Files//Mozilla Firefox//firefox.exe"
 FILEPATH_TO_2CATPCHA_API_KEY = r"C://Users//Rufus//OneDrive//Desktop//credentials.txt"
+
+#get the api key from the text file in home directory
+with open(FILEPATH_TO_2CATPCHA_API_KEY, "r", encoding="UTF-8") as f:
+    API_KEY = f.readline()
+    f.close()
+
+TWOCAPTCHA_API_KEY = os.getenv("APIKEY_2CAPTCHA", API_KEY)
 
 def button_combination_count(lists):
     if not isinstance(lists, list) or not all(isinstance(sublist, list) and sublist for sublist in lists) or lists == []:
