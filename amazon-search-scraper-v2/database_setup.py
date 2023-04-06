@@ -54,15 +54,11 @@ c.execute('''CREATE TABLE products (
 c.execute('''CREATE TABLE search_terms (
                 id INTEGER PRIMARY KEY,
                 search_term TEXT NOT NULL UNIQUE,
-                main_category TEXT NOT NULL UNIQUE
-            )''')
-
-# Create the 'locations' table
-c.execute('''CREATE TABLE locations (
-                id INTEGER PRIMARY KEY,
+                main_category TEXT NOT NULL UNIQUE,
                 location TEXT NOT NULL UNIQUE,
-                ip_address TEXT NOT NULL UNIQUE,
-                MULLVAD_NODE TEXT NOT NULL UNIQUE
+                MULLVAD_NODE TEXT NOT NULL UNIQUE,
+                DATE_COMPLETED TEXT NOT NULL UNIQUE,
+                LOCATION TEXT NOT NULL UNIQUE
             )''')
 
 # Create the 'search_results' table
@@ -70,7 +66,6 @@ c.execute('''CREATE TABLE search_results (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
                 search_term_id INTEGER,
-                location_id INTEGER,
                 position_within_listing_type INTEGER,
                 ad BOOLEAN,
                 listing_type TEXT,
@@ -80,6 +75,7 @@ c.execute('''CREATE TABLE search_results (
                 bundles_available BOOLEAN,
                 limited_time_deal BOOLEAN,
                 amazons_choice BOOLEAN,
+                amazon_brand BOOLEAN,
                 best_seller BOOLEAN,
                 prime BOOLEAN,
                 url TEXT,
