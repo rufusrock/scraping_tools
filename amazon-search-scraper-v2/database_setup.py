@@ -4,7 +4,6 @@ import csv
 conn = sqlite3.connect('amazon_search_scrape.db')
 c = conn.cursor()
 
-
 # Create the 'products' table
 c.execute('''CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY,
@@ -55,8 +54,8 @@ c.execute('''CREATE TABLE IF NOT EXISTS products (
 c.execute('''CREATE TABLE IF NOT EXISTS search_terms (
                 search_term TEXT PRIMARY KEY,
                 main_category TEXT NOT NULL,
-                location TEXT NOT NULL,
-                mullvad_node TEXT NOT NULL,
+                location TEXT,
+                mullvad_node TEXT,
                 date_completed TEXT
             )''')
 
@@ -88,35 +87,31 @@ c.execute('''CREATE TABLE IF NOT EXISTS search_results (
                 FOREIGN KEY (search_term_id) REFERENCES search_terms (search_term)
             )''')
 
+conn.commit()
 
-#insert our list of search terms and main_categories from the csv
 def insert_search_terms_from_csv():
     filename = "queries.csv"
-    with open(filename, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            search_term = row["query"]
-            main_category = row["category"]
-            insert_search_term(search_term, main_category)
-
-def insert_search_term(search_term, main_category):
     with sqlite3.connect('amazon_search_scrape.db') as conn:
-        c = conn.cursor()
-        try:
-            c.execute("INSERT INTO search_terms (search_term, main_category) VALUES (?, ?)",
-                      (search_term, main_category))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            pass  # Search term already exists, do nothing
+        with open(filename, 'r') as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            for row in csv_reader:
+                search_term = row.get('query')
+                main_category = row.get('category')
+                if search_term and main_category:
+                    conn.execute("INSERT INTO search_terms (search_term, main_category) VALUES (?, ?)",
+                                 (search_term, main_category))
+        conn.commit()
 
 def print_search_terms():
     with sqlite3.connect('amazon_search_scrape.db') as conn:
         c = conn.cursor()
-        c.execute("SELECT id, search_term FROM search_terms")
+        c.execute("SELECT search_term, main_category FROM search_terms")
         search_terms = c.fetchall()
         print("[+] Search Terms: ")
-        for term_id, term in search_terms:
-            print(f"{term_id}: {term}")
+        print(search_terms)  # add this line to check the value of search_terms
+        for term, main_category in search_terms:
+            print("Inside for loop")  # add this line to check if the loop is being entered
+            print(f"{term}: {main_category}")
 
 insert_search_terms_from_csv()
 print_search_terms()
