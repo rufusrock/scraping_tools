@@ -63,7 +63,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS search_terms (
 c.execute('''CREATE TABLE IF NOT EXISTS search_results (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
-                search_term_id TEXT,
+                search_term TEXT NOT NULL,
                 position_within_listing_type INTEGER,
                 ad BOOLEAN,
                 listing_type TEXT,
@@ -84,7 +84,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS search_results (
                 search_result_y_coord REAL,
                 search_result_x_coord REAL,
                 no_of_scrolls_for_visibility INTEGER,
-                FOREIGN KEY (search_term_id) REFERENCES search_terms (search_term)
+                FOREIGN KEY (search_term) REFERENCES search_terms (search_term)
             )''')
 
 conn.commit()
@@ -108,9 +108,7 @@ def print_search_terms():
         c.execute("SELECT search_term, main_category FROM search_terms")
         search_terms = c.fetchall()
         print("[+] Search Terms: ")
-        print(search_terms)  # add this line to check the value of search_terms
         for term, main_category in search_terms:
-            print("Inside for loop")  # add this line to check if the loop is being entered
             print(f"{term}: {main_category}")
 
 insert_search_terms_from_csv()

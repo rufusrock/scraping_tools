@@ -1,6 +1,68 @@
 import datetime
 import sqlite3
 
+# Define table column names as constants
+TIME = "time"
+SEARCH_TERM = "search_term"
+POSITION_WITHIN_LISTING_TYPE = "position_within_listing_type"
+AD = "ad"
+LISTING_TYPE = "listing_type"
+AVERAGE_RATING = "average_rating"
+NO_OF_RATINGS = "no_of_ratings"
+SAVE_COUPON = "save_coupon"
+BUNDLES_AVAILABLE = "bundles_available"
+LIMITED_TIME_DEAL = "limited_time_deal"
+AMAZONS_CHOICE = "amazons_choice"
+AMAZON_BRAND = "amazon_brand"
+BEST_SELLER = "best_seller"
+PRIME = "prime"
+URL = "url"
+SMALL_BUSINESS = "small_business"
+SEARCH_RESULT_SIZE = "search_result_size"
+SEARCH_RESULT_WINDOW_PERCENTAGE = "search_result_window_percentage"
+SEARCH_RESULT_HTML_BODY_PERCENTAGE = "search_result_html_body_percentage"
+SEARCH_RESULT_Y_COORD = "search_result_y_coord"
+SEARCH_RESULT_X_COORD = "search_result_x_coord"
+NO_OF_SCROLLS_FOR_VISIBILITY = "no_of_scrolls_for_visibility"
+
+def insert_search_result(search_result):
+    # Sanitize input data
+    for key in search_result:
+        if type(search_result[key]) == str:
+            search_result[key] = search_result[key].strip()
+
+    try:
+        with sqlite3.connect("amazon_search_scrape.db") as conn:
+            c = conn.cursor()
+            c.execute(
+                f"INSERT INTO search_results ({TIME}, {SEARCH_TERM}, {POSITION_WITHIN_LISTING_TYPE}, {AD}, {LISTING_TYPE}, "
+                f"{AVERAGE_RATING}, {NO_OF_RATINGS}, {SAVE_COUPON}, {BUNDLES_AVAILABLE}, {LIMITED_TIME_DEAL}, {AMAZONS_CHOICE}, "
+                f"{BEST_SELLER}, {PRIME}, {URL}, {SMALL_BUSINESS}, {SEARCH_RESULT_SIZE}, {SEARCH_RESULT_WINDOW_PERCENTAGE}, "
+                f"{SEARCH_RESULT_HTML_BODY_PERCENTAGE}, {SEARCH_RESULT_Y_COORD}, {SEARCH_RESULT_X_COORD}, "
+                f"{NO_OF_SCROLLS_FOR_VISIBILITY}, {AMAZON_BRAND}) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    search_result[TIME], search_result[SEARCH_TERM], search_result[POSITION_WITHIN_LISTING_TYPE],
+                    search_result[AD], search_result[LISTING_TYPE], search_result[AVERAGE_RATING], search_result[NO_OF_RATINGS],
+                    search_result[SAVE_COUPON], search_result[BUNDLES_AVAILABLE], search_result[LIMITED_TIME_DEAL],
+                    search_result[AMAZONS_CHOICE], search_result[BEST_SELLER], search_result[PRIME], search_result[URL],
+                    search_result[SMALL_BUSINESS], search_result[SEARCH_RESULT_SIZE], search_result[SEARCH_RESULT_WINDOW_PERCENTAGE],
+                    search_result[SEARCH_RESULT_HTML_BODY_PERCENTAGE], search_result[SEARCH_RESULT_Y_COORD],
+                    search_result[SEARCH_RESULT_X_COORD], search_result[NO_OF_SCROLLS_FOR_VISIBILITY], search_result[AMAZON_BRAND]
+                )
+            )
+            conn.commit()
+            return c.lastrowid
+    except sqlite3.Error as e:
+        print(f"Error inserting search result: {e}")
+        return None
+    
+def get_unscraped_search_terms():
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
+        c = conn.cursor()
+        c.execute('''SELECT search_term FROM search_terms WHERE date_completed IS NULL''')
+        return c.fetchall()
+    
 
 def update_search_term(search_term,location, mullvad_node):
     date_completed = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -12,33 +74,3 @@ def update_search_term(search_term,location, mullvad_node):
                      WHERE search_term = ?''', (date_completed, search_term, location, mullvad_node))
         conn.commit()
 
-def insert_search_result(search_result):
-    with sqlite3.connect('amazon_search_scrape.db') as conn:
-        c = conn.cursor()
-        c.execute('''INSERT INTO search_results (
-                        time, search_term_id, location_id, position_within_section, ad, listing_type,
-                        average_rating, no_of_reviews, save_coupon_search_label_present, bundles_available,
-                        limited_time_deal_search_label_present, amazons_choice_search_label_present, best_seller_search_label_present,
-                        prime_search_label_present, url, small_business, search_result_size,
-                        search_result_window_percentage, search_result_html_body_percentage, search_result_y_coord,
-                        search_result_x_coord, no_of_scrolls_for_product_visibility
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                    (
-                        search_result["time"], search_result["search_term_id"],
-                        search_result["position_within_listing_type"], search_result["ad"], search_result["listing_type"],
-                        search_result["average_rating"], search_result["no_of_ratings"], search_result["save_coupon"],
-                        search_result["bundles_available"], search_result["limited_time_deal"], search_result["amazon_choice"],
-                        search_result["best_seller"], search_result["prime"], search_result["url"],
-                        search_result["small_business"], search_result["search_result_size"],
-                        search_result["search_result_window_percentage"], search_result["search_result_html_body_percentage"],
-                        search_result["search_result_y_coord"], search_result["search_result_x_coord"],
-                        search_result["no_of_scrolls_for_visibility"]
-                    ))
-        conn.commit()
-        return c.lastrowid
-    
-def get_unscraped_search_terms():
-    with sqlite3.connect('amazon_search_scrape.db') as conn:
-        c = conn.cursor()
-        c.execute('''SELECT search_term FROM search_terms WHERE date_completed IS NULL''')
-        return c.fetchall()

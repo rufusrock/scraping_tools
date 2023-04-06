@@ -61,7 +61,7 @@ def option_combo_count(browser, twister):
 
 #looks for captcha and solves it
 def captcha_solver(browser):
-    captcha = browser.find_elements(By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")
+    captcha = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "form[action='/errors/validateCaptcha']")))
     if captcha:
         solver = TwoCaptcha(TWOCAPTCHA_API_KEY)
         try:
