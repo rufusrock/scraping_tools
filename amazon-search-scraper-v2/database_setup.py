@@ -52,14 +52,22 @@ c.execute('''CREATE TABLE products (
 
 # Create the 'search_terms' table
 c.execute('''CREATE TABLE search_terms (
-                id INTEGER PRIMARY KEY,
-                search_term TEXT NOT NULL UNIQUE,
-                main_category TEXT NOT NULL UNIQUE,
-                location TEXT NOT NULL UNIQUE,
-                MULLVAD_NODE TEXT NOT NULL UNIQUE,
-                DATE_COMPLETED TEXT NOT NULL UNIQUE,
-                LOCATION TEXT NOT NULL UNIQUE
+                search_term TEXT PRIMARY KEY,
+                main_category TEXT NOT NULL,
+                location TEXT NOT NULL,
+                mullvad_node TEXT NOT NULL,
+                date_completed TEXT
             )''')
+# Create the 'product_scrape_details' table
+c.execute('''CREATE TABLE product_scrape_details (
+                id INTEGER PRIMARY KEY,
+                time TEXT NOT NULL,
+                date TEXT NOT NULL,
+                product_id INTEGER,
+                location TEXT,
+                search_term_id INTEGER
+            )''')
+
 
 # Create the 'search_results' table
 c.execute('''CREATE TABLE search_results (
@@ -87,7 +95,7 @@ c.execute('''CREATE TABLE search_results (
                 search_result_x_coord REAL,
                 no_of_scrolls_for_visibility INTEGER,
                 FOREIGN KEY (search_term_id) REFERENCES search_terms (id),
-                FOREIGN KEY (location_id) REFERENCES locations (id),
+                FOREIGN KEY (location_id) REFERENCES product_scrape_details (id),
                 FOREIGN KEY (product_id) REFERENCES products (id)
             )''')
 
@@ -102,12 +110,15 @@ def insert_search_terms_from_csv():
             insert_search_term(search_term, main_category)
 
 def insert_search_term(search_term, main_category):
-    with sqlite3.connect('amazon_search_scrape.db') as conn:
+    with sqlite3.connect('ecommerce.db') as conn:
         c = conn.cursor()
-        c.execute("INSERT OR IGNORE INTO search_terms (search_term, main_category) VALUES (?,?)", (search_term, main_category))
-        conn.commit()
-        c.execute("SELECT id FROM search_terms WHERE search_term = ?", (search_term,))
-        return c.fetchone()[0]
+        try:
+            c.execute("INSERT INTO search_terms (search_term, main_category) VALUES (?, ?)",
+                      (search_term, main_category))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            pass  # Search term already exists, do nothing
+
 
 def print_search_terms():
     with sqlite3.connect('amazon_search_scrape.db') as conn:

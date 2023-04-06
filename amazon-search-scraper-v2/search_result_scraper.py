@@ -62,94 +62,136 @@ def get_size_stats(browser, element, product_data):
 
 def get_search_result_data(browser, search_result, product_data):
     #Checks if the product is an ad
-    sponsored_span_text = search_result.find_elements(By.CSS_SELECTOR, "span.puis-label-popover-default")
+
+    try:
+        sponsored_span_text = search_result.find_elements(By.CSS_SELECTOR, "span.puis-label-popover-default")
+    except NoSuchElementException:
+        product_data["ad"] = False
+
     if sponsored_span_text:
-        if "Sponsored" in sponsored_span_text[0].find_element(By.CSS_SELECTOR, "span").text or "AdHolder" in product.get_attribute("class"):
+        if "Sponsored" in sponsored_span_text[0].find_element(By.CSS_SELECTOR, "span").text or "AdHolder" in search_result.get_attribute("class"):
             if "Carousel" not in product_data["listing_type"]:
                 product_data["listing_type"] = "Search Injected Ad"
                 product_data["ad"] = True
 
     #get the product name
-    name = search_result.find_element(By.CSS_SELECTOR, "span.a-size-medium.a-color-base.a-text-normal")
-    if name:
+    try:
+        name = search_result.find_element(By.CSS_SELECTOR, "span.a-size-medium.a-color-base.a-text-normal")
         product_data["product_name"] = name.text
-    else:
+    except NoSuchElementException:
         name = search_result.find_element(By.CSS_SELECTOR, "span.a-size-base-plus.a-color-base.a-text-normal")
         if name:
             product_data["product_name"] = name.text
 
     #get the product price
-    current_price = search_result.find_element(By.CSS_SELECTOR, "span.a-offscreen")
+    try:
+        current_price = search_result.find_element(By.CSS_SELECTOR, "span.a-offscreen")
+    except NoSuchElementException:
+        product_data["current_price"] = "ERROR - Out of Stock?"
+
     if current_price:
         product_data["current_price"] = current_price.text
 
     #get the product rating
-    rating_list = search_result.find_element(By.CSS_SELECTOR, "span.a-icon-alt")
+    try:
+        rating_list = search_result.find_element(By.CSS_SELECTOR, "span.a-icon-alt")
+    except NoSuchElementException:
+        product_data["average_rating"] = "No Rating"
+    
     if rating_list:
-        rating_list = rating_list.text.split(" ")
-        for string in rating_list:
-            if "." in string:
-                product_data["average_rating"] = string
-                break
-    else:
-        product_data["average_rating"] = "ERROR"
-
-    #if there is an amazon brand logo in the listing set the amazon brand status to true 
-    amazon_banner = search_result.find_element(By.CSS_SELECTOR, "span.a-color-state.puis-light-weight-text")
-    if amazon_banner:
-        product_data["amazon_brand"] = True
-    else:
-        product_data["amazon_brand"] = False
-
-    #if there is a prime logo in the listing set the prime search status to true
-    prime_logo = search_result.find_element(By.CSS_SELECTOR, "i.a-icon.a-icon-prime.a-icon-medium")
-    if prime_logo:
-        product_data["prime"] = True
-    
-    #look for best seller icon in product listing and set best seller status to true if it is found   
-    icon_element = search_result.find_element(By.CSS_SELECTOR, "span.a-badge-label-inner.a-text-ellipsis")
-    if icon_element:
-        if "Best" in icon_element.find_element(By.CSS_SELECTOR, "span").text:
-            product_data["best_seller"] = True
-        elif "Amazon" in icon_element.find_element(By.CSS_SELECTOR, "span").text:
-            product_data["amazons_choice"] = True
-    
-    #look for a limited time deal icon in the product listing and set limited time deal status to true if it is found
-    limited_time_deal = search_result.find_element(By.CSS_SELECTOR, "span[data-a-badge-color='sx-lightning-deal-red']")
-    if limited_time_deal:
-        if limited_time_deal.find_element(By.CSS_SELECTOR, "span.a-badge-text").text:
-            product_data["limited_time_deal"] = True
-    
-    #look for a save coupon icon in the product listing and set save coupon status to true if it is found
-    save_coupon = search_result.find_element(By.CSS_SELECTOR, "span[class='a-size-base s-highlighted-text-padding aok-inline-block s-coupon-highlight-color']")
-    if save_coupon != None:
-        if "Save" in save_coupon.text:
-            save_string = save_coupon.text.split(" ")
-            for part in save_string:
-                if "$" in part or "%" in part:
-                    product_data["save_coupon"] = part
+            rating_list = rating_list.text.split(" ")
+            for string in rating_list:
+                if "." in string:
+                    product_data["average_rating"] = string
                     break
 
+    #if there is an amazon brand logo in the listing set the amazon brand status to true 
+    try:
+        amazon_banner = search_result.find_element(By.CSS_SELECTOR, "span.a-color-state.puis-light-weight-text")
+    except NoSuchElementException:
+        product_data["amazon_brand"] = False
+
+    if amazon_banner:
+            product_data["amazon_brand"] = True
+
+    #if there is a prime logo in the listing set the prime search status to true
+    try:
+        prime_logo = search_result.find_element(By.CSS_SELECTOR, "i.a-icon.a-icon-prime.a-icon-medium")
+    except NoSuchElementException:
+        product_data["prime"] = False
+    
+    if prime_logo:
+            product_data["prime"] = True
+    
+    #look for best seller icon in product listing and set best seller status to true if it is found
+    try:   
+        icon_element = search_result.find_element(By.CSS_SELECTOR, "span.a-badge-label-inner.a-text-ellipsis")
+    except NoSuchElementException:
+        product_data["best_seller"] = False
+        product_data["amazons_choice"] = False
+
+    if icon_element:
+            if "Best" in icon_element.find_element(By.CSS_SELECTOR, "span").text:
+                product_data["best_seller"] = True
+            elif "Amazon" in icon_element.find_element(By.CSS_SELECTOR, "span").text:
+                product_data["amazons_choice"] = True
+
+    #look for a limited time deal icon in the product listing and set limited time deal status to true if it is found
+    try:
+        limited_time_deal = search_result.find_element(By.CSS_SELECTOR, "span[data-a-badge-color='sx-lightning-deal-red']")
+    except NoSuchElementException:
+        product_data["limited_time_deal"] = False
+
+    if limited_time_deal:
+            if limited_time_deal.find_element(By.CSS_SELECTOR, "span.a-badge-text").text:
+                product_data["limited_time_deal"] = True
+        
+    #look for a save coupon icon in the product listing and set save coupon status to true if it is found
+    try:
+        save_coupon = search_result.find_element(By.CSS_SELECTOR, "span[class='a-size-base s-highlighted-text-padding aok-inline-block s-coupon-highlight-color']")
+    except NoSuchElementException:
+        product_data["save_coupon"] = False
+
+    if save_coupon:
+            if "Save" in save_coupon.text:
+                save_string = save_coupon.text.split(" ")
+                for part in save_string:
+                    if "$" in part or "%" in part:
+                        product_data["save_coupon"] = part
+                        break
+
     #check if small business icon is present in the product listing and set small business status to true if it is found
-    small_business = False
-    labels = search_result.find_elements(By.CSS_SELECTOR, "img.s-image")
-    for label in labels:
-        if label.get_attribute("src") == "https://m.media-amazon.com/images/I/111mHoVK0kL._SS200_.png":
-            small_business = True
-            break
-    product_data["small_business"] = small_business
+    try:
+        labels = search_result.find_elements(By.CSS_SELECTOR, "img.s-image")
+    except NoSuchElementException:
+        product_data["small_business"] = False
+    
+    product_data["small_business"] = False
+    if labels:
+        for label in labels:
+            if label.get_attribute("src") == "https://m.media-amazon.com/images/I/111mHoVK0kL._SS200_.png":
+                product_data["small_business"] = True
+                break
 
     #check if bundles are available in the product listing and set bundles available status to true if they are found
-    bundles_available = False
-    links = search_result.find_elements(By.CSS_SELECTOR, "a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style")
-    for link in links:
-        if "Bundles" in link.text:
-            bundles_available = True
-            break
-    product_data["bundles_available"] = bundles_available
+    try:
+        links = search_result.find_elements(By.CSS_SELECTOR, "a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style")
+    except NoSuchElementException:
+        product_data["bundles_available"] = False
+    
+    if links:
+        for link in links:
+            if "Bundles" in link.text:
+                bundles_available = True
+                break
+        product_data["bundles_available"] = bundles_available
 
     #Get the Product's URL
-    href = search_result.find_element(By.CSS_SELECTOR, "a.a-link-normal.s-no-outline")
+    try:
+        href = search_result.find_element(By.CSS_SELECTOR, "a.a-link-normal.s-no-outline")
+    except NoSuchElementException:
+        product_data["url"] = "ERROR"
+
     if href:
         href = href.get_attribute("href")
         if "amazon.com" in href:
@@ -158,9 +200,13 @@ def get_search_result_data(browser, search_result, product_data):
             product_data["url"] = "https://www.amazon.com" + href
     else:
         product_data["url"] = "ERROR"
-        
-    #Get the Product's number of reviews    
-    no_of_reviews = search_result.find_element(By.CSS_SELECTOR, "span.a-size-base.s-underline-text")
+
+    try:
+        #Get the Product's number of reviews    
+        no_of_reviews = search_result.find_element(By.CSS_SELECTOR, "span.a-size-base.s-underline-text")
+    except NoSuchElementException:
+        product_data["no_of_ratings"] = "None"
+
     if no_of_reviews:
         product_data["no_of_ratings"] = no_of_reviews.text.replace(",", "") 
     else:
@@ -197,7 +243,6 @@ def create_search_result_dict(search_term_id):
         "no_of_scrolls_for_visibility": None,
     }
     return search_result
-
 
 
 def main():
@@ -250,9 +295,10 @@ def main():
         network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
         location = network_info.split("in")[-1].strip()
         mullvad_node = network_info.split(" ")[2].strip()
+
         print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
         print(f"[+] Scraping search term {search_term}")
-        update_search_term(search_term_id, location)
+        update_search_term(search_term_id, location, mullvad_node)
         search_bar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
         search_bar.clear()
         search_bar.send_keys(search_term)
