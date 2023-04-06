@@ -3,9 +3,11 @@ import sqlite3
 
 # Define table column names as constants
 TIME = "time"
+NAME = "name"
 SEARCH_TERM = "search_term"
 POSITION_WITHIN_LISTING_TYPE = "position_within_listing_type"
 AD = "ad"
+PRICE = "price"
 LISTING_TYPE = "listing_type"
 AVERAGE_RATING = "average_rating"
 NO_OF_RATINGS = "no_of_ratings"
@@ -35,14 +37,14 @@ def insert_search_result(search_result):
         with sqlite3.connect("amazon_search_scrape.db") as conn:
             c = conn.cursor()
             c.execute(
-                f"INSERT INTO search_results ({TIME}, {SEARCH_TERM}, {POSITION_WITHIN_LISTING_TYPE}, {AD}, {LISTING_TYPE}, "
+                f"INSERT INTO search_results ({TIME}, {NAME}, {PRICE}, {SEARCH_TERM}, {POSITION_WITHIN_LISTING_TYPE}, {AD}, {LISTING_TYPE}, "
                 f"{AVERAGE_RATING}, {NO_OF_RATINGS}, {SAVE_COUPON}, {BUNDLES_AVAILABLE}, {LIMITED_TIME_DEAL}, {AMAZONS_CHOICE}, "
                 f"{BEST_SELLER}, {PRIME}, {URL}, {SMALL_BUSINESS}, {SEARCH_RESULT_SIZE}, {SEARCH_RESULT_WINDOW_PERCENTAGE}, "
                 f"{SEARCH_RESULT_HTML_BODY_PERCENTAGE}, {SEARCH_RESULT_Y_COORD}, {SEARCH_RESULT_X_COORD}, "
                 f"{NO_OF_SCROLLS_FOR_VISIBILITY}, {AMAZON_BRAND}) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    search_result[TIME], search_result[SEARCH_TERM], search_result[POSITION_WITHIN_LISTING_TYPE],
+                    search_result[TIME], search_result[NAME], search_result[PRICE], search_result[SEARCH_TERM], search_result[POSITION_WITHIN_LISTING_TYPE],
                     search_result[AD], search_result[LISTING_TYPE], search_result[AVERAGE_RATING], search_result[NO_OF_RATINGS],
                     search_result[SAVE_COUPON], search_result[BUNDLES_AVAILABLE], search_result[LIMITED_TIME_DEAL],
                     search_result[AMAZONS_CHOICE], search_result[BEST_SELLER], search_result[PRIME], search_result[URL],
@@ -63,14 +65,12 @@ def get_unscraped_search_terms():
         c.execute('''SELECT search_term FROM search_terms WHERE date_completed IS NULL''')
         return c.fetchall()
     
-
-def update_search_term(search_term,location, mullvad_node):
+def update_search_term(search_term, location, mullvad_node, time_taken):
     date_completed = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
     with sqlite3.connect('amazon_search_scrape.db') as conn:
         c = conn.cursor()
         c.execute('''UPDATE search_terms
-                     SET date_completed = ?, location = ?, mullvad_node = ?
-                     WHERE search_term = ?''', (date_completed, search_term, location, mullvad_node))
+                     SET date_completed = ?, location = ?, mullvad_node = ?, time_to_complete = ?
+                     WHERE search_term = ?''', (date_completed, location, mullvad_node, time_taken, search_term))
         conn.commit()
 

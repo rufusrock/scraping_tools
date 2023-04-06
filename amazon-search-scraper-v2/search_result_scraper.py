@@ -47,7 +47,8 @@ def captcha_solver(browser):
                 os.remove("captcha.jpg")
                 text_form = browser.find_element(By.CSS_SELECTOR, "input[id='captchacharacters']")
                 text_form.clear()
-                text_form.send_keys(result["code"].capitalize())
+                send_string = result["code"].upper()
+                text_form.send_keys(send_string)
                 text_form.send_keys(Keys.RETURN)
             except NoSuchElementException:
                 print("[+] Captcha element not found")
@@ -101,25 +102,24 @@ def get_search_result_data(browser, search_result, product_data):
 
     #get the product name
     try:
-        name = search_result.find_element(By.CSS_SELECTOR, "span.a-size-medium.a-color-base.a-text-normal")
-        product_data["product_name"] = name.text
+        name = search_result.find_element(By.CSS_SELECTOR, "span[class='a-size-medium a-color-base a-text-normal']")
+        product_data["name"] = name.get_attribute("innerHTML")
     except NoSuchElementException:
-        name = search_result.find_element(By.CSS_SELECTOR, "span.a-size-base-plus.a-color-base.a-text-normal")
+        name = find_element(search_result, (By.CSS_SELECTOR, "span.a-size-base-plus.a-color-base.a-text-normal"))
         if name:
-            product_data["product_name"] = name.text
+            product_data["name"] = name.get_attribute("innerHTML")
 
     # Get the product price
     current_price = find_element(search_result, (By.CSS_SELECTOR, "span.a-offscreen"))
     if current_price:
-        product_data["current_price"] = current_price.text
+        product_data["price"] = current_price.get_attribute("innerHTML")
     else:
-        product_data["current_price"] = "ERROR - Out of Stock?"
+        product_data["price"] = "ERROR - Out of Stock?"
 
     # Get the product rating
     rating_list = find_element(search_result, (By.CSS_SELECTOR, "span[class='a-icon-alt']"))
     if rating_list:
-        rating_list = rating_list.text.split(" ")
-        print(rating_list)
+        rating_list = rating_list.get_attribute("innerHTML").split(" ")
         for string in rating_list:
             if "." in string:
                 product_data["average_rating"] = string
@@ -225,8 +225,10 @@ def get_search_result_data(browser, search_result, product_data):
 def create_search_result_dict(search_term):
     search_result = {
         "time": time.time(),
+        "name": None,
         "position_within_listing_type": None, 
         "ad": None,
+        "price": None,
         "search_term": search_term,
         "listing_type": None,
         "average_rating": None,
@@ -292,15 +294,15 @@ def main():
     browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
 
     browser.get("https://www.amazon.com")
-    time.sleep(5)
-
+    time.sleep(2)
     captcha_solver(browser)
 
-    total_run_time = time.time()
+    browser.refresh()
+    
     unscraped_search_terms = get_unscraped_search_terms()
 
     for (search_term,) in unscraped_search_terms:
-
+        total_run_time = time.time()
         network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
         location = network_info.split("in")[-1].strip()
         mullvad_node = network_info.split(" ")[2].strip()
@@ -308,7 +310,7 @@ def main():
         print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
         print(f"[+] Scraping search term {search_term}")
 
-        update_search_term(search_term, location, mullvad_node)
+        
 
         search_bar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
         search_bar.clear()
@@ -345,17 +347,25 @@ def main():
         carousel_counter = 1
         for carousel in carousels:
             if carousel.is_displayed():
-                #preceding_span = carousel.find_element(By.XPATH, "./preceding-sibling::span[@class='a-size-medium-plus a-color-base']")
+                listing_type = find_element(carousel, (By.XPATH, "./preceding-sibling::span[@class='a-size-medium-plus a-color-base']"))
+                if listing_type:
+                    listing_type = listing_type.get_attribute("innerHTML")
+                else:
+                    listing_type = carousel_counter
                 #listing_type = carousel.find_element_by_xpath("./preceding-sibling::span[@class='a-size-medium-plus a-color-base']")
                 carousel_products = carousel.find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
                 product_position = 1
                 for product in carousel_products:
                     print("[+] Scraping carousel product")
                     search_result = create_search_result_dict(search_term)
-                    search_result["listing_type"] = "Carousel_" + str(carousel_counter)
-                    ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
-                    if any(x in listing_type.lower() for x in ad_section_heading_keywords):
-                        search_result["ad"] = True
+                    if type(listing_type) == str:
+                        ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
+                        if any(x in listing_type.lower() for x in ad_section_heading_keywords):
+                            search_result["ad"] = True
+                        search_result["listing_type"] = "Carousel_" + re.sub(r'\s+', '', listing_type)
+                    else:
+                        search_result["listing_type"] = "Carousel_" + str(listing_type)
+
                     search_result["position_within_listing_type"] = product_position
                     search_result = get_search_result_data(browser, product, search_result)
                     product_position += 1
@@ -369,7 +379,8 @@ def main():
             if video_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
-                search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
+                #search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
+                search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']").get_attribute("href")
                 search_result["ad"] = True
                 search_result["listing_type"] = "Video" 
                 search_result["position_within_listing_type"] = video_position
@@ -377,6 +388,7 @@ def main():
                 search_result["best_seller"] = "NA"
                 search_result["prime"] = "NA"
                 search_result["name"] = "NA"
+                search_result["price"] = "NA"
                 search_result["save_coupon"] = "NA"
                 search_result["limited_time_deal"] = "NA"
                 search_result["bundles_available"] = "NA"
@@ -400,12 +412,14 @@ def main():
             if banner_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
-                search_result["url"] = banner_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
+                #search_result["url"] = banner_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
+                search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']").get_attribute("href")
                 search_result["ad"] = True
                 search_result["listing_type"] = "Banner"
                 search_result["amazons_choice"] = "NA"
                 search_result["best_seller"] = "NA"
                 search_result["prime"] = "NA"
+                search_result["price"] = "NA"
                 search_result["name"] = "NA"
                 search_result["save_coupon"] = "NA"
                 search_result["limited_time_deal"] = "NA"
@@ -419,6 +433,7 @@ def main():
                 banner_position += 1
 
         total_run_time = time.time() - total_run_time
+        update_search_term(search_term, location, mullvad_node, total_run_time)
         print("[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes")
 
     browser.quit()

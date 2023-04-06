@@ -56,16 +56,19 @@ c.execute('''CREATE TABLE IF NOT EXISTS search_terms (
                 main_category TEXT NOT NULL,
                 location TEXT,
                 mullvad_node TEXT,
-                date_completed TEXT
+                date_completed TEXT,
+                time_to_complete TEXT
             )''')
 
 # Create the 'search_results' table
 c.execute('''CREATE TABLE IF NOT EXISTS search_results (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
+                name TEXT,
                 search_term TEXT NOT NULL,
                 position_within_listing_type INTEGER,
                 ad BOOLEAN,
+                price REAL,
                 listing_type TEXT,
                 average_rating REAL,
                 no_of_ratings INTEGER,
