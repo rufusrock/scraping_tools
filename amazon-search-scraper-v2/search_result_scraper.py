@@ -306,11 +306,13 @@ def main():
     browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
 
     browser.get("https://www.amazon.com")
+    time.sleep(5)
 
     captcha_solver(browser)
 
     total_run_time = time.time()
     unscraped_search_terms = get_unscraped_search_terms()
+
     for (search_term,) in unscraped_search_terms:
 
         network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout

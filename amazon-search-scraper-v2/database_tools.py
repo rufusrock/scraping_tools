@@ -1,17 +1,19 @@
 import datetime
 import sqlite3
 
-def update_search_term(search_term_id, location, mullvad_node):
-    date_completed = datetime.datetime.now().strftime("%Y-%m-%d")
-    with sqlite3.connect('ecommerce.db') as conn:
+
+def update_search_term(search_term,location, mullvad_node):
+    date_completed = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
         c = conn.cursor()
         c.execute('''UPDATE search_terms
-                     SET location = ?, date_completed = ?, Mullvad_node = ?
-                     WHERE id = ?''', (location, date_completed, search_term_id, mullvad_node))
+                     SET date_completed = ?, location = ?, mullvad_node = ?
+                     WHERE search_term = ?''', (date_completed, search_term, location, mullvad_node))
         conn.commit()
 
 def insert_search_result(search_result):
-    with sqlite3.connect('ecommerce.db') as conn:
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
         c = conn.cursor()
         c.execute('''INSERT INTO search_results (
                         time, search_term_id, location_id, position_within_section, ad, listing_type,
@@ -36,9 +38,7 @@ def insert_search_result(search_result):
         return c.lastrowid
     
 def get_unscraped_search_terms():
-    with sqlite3.connect("amazon_search_scrape.db") as conn:
+    with sqlite3.connect('amazon_search_scrape.db') as conn:
         c = conn.cursor()
-        c.execute('''SELECT id, search_term FROM search_terms WHERE NOT EXISTS (
-            SELECT 1 FROM search_results WHERE product_data.search_term_id = search_terms.id
-        )''')
+        c.execute('''SELECT search_term FROM search_terms WHERE date_completed IS NULL''')
         return c.fetchall()
