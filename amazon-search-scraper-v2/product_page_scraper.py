@@ -72,7 +72,7 @@ def captcha_solver(browser):
         solver = TwoCaptcha(TWOCAPTCHA_API_KEY)
         try:
             print("[+] Solving Captcha")
-            image_url = captcha[0].find_element(By.TAG_NAME, "img").get_attribute("src")
+            image_url = captcha[0].find_elements(By.TAG_NAME, "img").get_attribute("src")
             # Download the captcha image and save it to a file
             urllib.request.urlretrieve(image_url, "captcha.jpg")
             result = solver.normal("captcha.jpg")
