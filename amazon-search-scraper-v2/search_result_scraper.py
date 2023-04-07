@@ -284,14 +284,14 @@ def main():
 
     user_agent = choice(useragentlist)
 
-    firefox_profile = webdriver.FirefoxProfile()
-    firefox_profile.set_preference("dom.webdriver.enabled", False)
-    firefox_profile.set_preference("useAutomationExtension", False)
-    firefox_profile.set_preference("dom.webnotifications.enabled", False)
-    firefox_profile.set_preference("dom.push.enabled", False)
-    firefox_profile.set_preference("general.useragent.override", user_agent)
+    #options = webdriver.FirefoxProfile()
+    options.set_preference("dom.webdriver.enabled", False)
+    options.set_preference("useAutomationExtension", False)
+    options.set_preference("dom.webnotifications.enabled", False)
+    options.set_preference("dom.push.enabled", False)
+    options.set_preference("general.useragent.override", user_agent)
 
-    browser = webdriver.Firefox(firefox_profile=firefox_profile, options=options) #opens the browser
+    browser = webdriver.Firefox(options=options) #opens the browser
 
     browser.get("https://www.amazon.com")
     time.sleep(2)
@@ -319,17 +319,16 @@ def main():
         
         search_results, carousels, video_elements, banner_elements = None, None, None, None
 
-        time.sleep(3)
-
+        time.sleep(5)
+        
         search_results = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']")))
         print("[+] Number of search results found: " + str(len(search_results)))
         carousels = browser.find_elements(By.CSS_SELECTOR, "span[data-component-type='s-searchgrid-carousel']")
         print("[+] Number of carousels found: " + str(len(carousels)))
         video_elements = browser.find_elements(By.CSS_SELECTOR, "div[class='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")
         print("[+] Number of video elements found: " + str(len(video_elements)))
-        banner_elements = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large Adholder s-flex-full-width']")
+        banner_elements = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width']")
         print("[+] Number of banner elements found: " + str(len(banner_elements)))
-
         
         result_position = 1
 
@@ -347,24 +346,22 @@ def main():
         carousel_counter = 1
         for carousel in carousels:
             if carousel.is_displayed():
-                listing_type = find_element(carousel, (By.XPATH, "./preceding-sibling::span[@class='a-size-medium-plus a-color-base']"))
-                if listing_type:
-                    listing_type = listing_type.get_attribute("innerHTML")
-                else:
-                    listing_type = carousel_counter
+                listing_type = carousel.find_element(By.XPATH, ".//preceding::span[contains(@class,'a-size-medium-plus') and contains(@class,'a-color-base')][1]")
+                listing_type = listing_type.get_attribute("innerHTML")
+
                 #listing_type = carousel.find_element_by_xpath("./preceding-sibling::span[@class='a-size-medium-plus a-color-base']")
                 carousel_products = carousel.find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
                 product_position = 1
                 for product in carousel_products:
                     print("[+] Scraping carousel product")
+
                     search_result = create_search_result_dict(search_term)
-                    if type(listing_type) == str:
-                        ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
-                        if any(x in listing_type.lower() for x in ad_section_heading_keywords):
-                            search_result["ad"] = True
-                        search_result["listing_type"] = "Carousel_" + re.sub(r'\s+', '', listing_type)
-                    else:
-                        search_result["listing_type"] = "Carousel_" + str(listing_type)
+                    
+                    ad_section_heading_keywords = ["rated", "frequently", "choice", "recommendations", "top", "our", "recommendations", "editorial", "best"]
+                    if any(x in listing_type.lower() for x in ad_section_heading_keywords):
+                        search_result["ad"] = True
+                    search_result["listing_type"] = "Carousel_" + re.sub(r'\s+', '', listing_type)
+                    
 
                     search_result["position_within_listing_type"] = product_position
                     search_result = get_search_result_data(browser, product, search_result)
@@ -379,7 +376,6 @@ def main():
             if video_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
-                #search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
                 search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']").get_attribute("href")
                 search_result["ad"] = True
                 search_result["listing_type"] = "Video" 
@@ -387,7 +383,10 @@ def main():
                 search_result["amazons_choice"] = "NA"
                 search_result["best_seller"] = "NA"
                 search_result["prime"] = "NA"
+                search_result["average_rating"] = "NA"
+                search_result["number_of_ratings"] = "NA"
                 search_result["name"] = "NA"
+                search_result["amazon_brand"] = "NA"
                 search_result["price"] = "NA"
                 search_result["save_coupon"] = "NA"
                 search_result["limited_time_deal"] = "NA"
@@ -412,7 +411,6 @@ def main():
             if banner_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
-                #search_result["url"] = banner_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']")["href"]
                 search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']").get_attribute("href")
                 search_result["ad"] = True
                 search_result["listing_type"] = "Banner"
@@ -421,6 +419,9 @@ def main():
                 search_result["prime"] = "NA"
                 search_result["price"] = "NA"
                 search_result["name"] = "NA"
+                search_result["amazon_brand"] = "NA"
+                search_result["average_rating"] = "NA"
+                search_result["no_of_ratings"] = "NA"
                 search_result["save_coupon"] = "NA"
                 search_result["limited_time_deal"] = "NA"
                 search_result["bundles_available"] = "NA"
