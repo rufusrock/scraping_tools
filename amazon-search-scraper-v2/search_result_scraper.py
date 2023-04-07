@@ -249,15 +249,13 @@ def create_search_result_dict(search_term):
 
 def main():
     options = Options()
-    #set the browser to headless mode [UNCOMMENT TO RUN WITH BROWSER GUI]
+    #set the browser to headless mode [UNCOMMENT TO RUN WITHOUT BROWSER GUI] (Minor performance boost)
     #options.add_argument("-headless")
 
     #anti detection measures
     options.set_preference("dom.webdriver.enabled", False)
     options.set_preference("useAutomationExtension", False)
     options.binary_location = BINARY_LOCATION #locates the firefox binary
-
-    search_term_list = [""]
 
     # Initializing a list with two Useragents 
     useragentlist = [ 
@@ -280,7 +278,6 @@ def main():
 
     user_agent = choice(useragentlist)
 
-    #options = webdriver.FirefoxProfile()
     options.set_preference("dom.webdriver.enabled", False)
     options.set_preference("useAutomationExtension", False)
     options.set_preference("dom.webnotifications.enabled", False)
@@ -289,42 +286,41 @@ def main():
 
     browser = webdriver.Firefox(options=options) #opens the browser
 
-    browser.get("https://www.amazon.com")
+    browser.get("https://www.amazon.com") #consider the effect of going through google? might be worth adding a feature to test for impact? 
+
+    print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
     time.sleep(2)
+
+    captcha_solver(browser)
+    #sometimes you get a double captcha here so we need to solve it again (if there isn't one only adds 10 seconds once not a huge deal)
     captcha_solver(browser)
 
-    browser.refresh()
-    
+    browser.refresh() #refreshes the page because sometimes amazon loads with wierd formatting and this fixes it
+
     unscraped_search_terms = get_unscraped_search_terms()
 
     for (search_term,) in tqdm(unscraped_search_terms, desc="Search Terms", unit="search term"):
-        total_run_time = time.time()
+        search_term_run_time = time.time()
         network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
-        location = network_info.split("in")[-1].strip()
-        mullvad_node = network_info.split(" ")[2].strip()
 
-        print(f"[+] Connected to Mullvad node {mullvad_node} in {location}")
+        location = network_info.split("in")[-1].strip() #much faster location detection than using geoip
+        mullvad_node = network_info.split(" ")[2].strip() #could be relevant - might be able to see in data if there is a correlation between node and ad prevelance
+
         print(f"[+] Scraping search term {search_term}")
-
-        
 
         search_bar = WebDriverWait(browser, 20).until(EC.presence_of_element_located((By.ID, "twotabsearchtextbox")))
         search_bar.clear()
         search_bar.send_keys(search_term)
         search_bar.send_keys(Keys.RETURN)
         
-        search_results, carousels, video_elements, banner_elements = None, None, None, None
+        search_results, carousels, video_elements, banner_elements = None, None, None, None #resetting these variables because I was getting weird DOM expired errors
 
-        time.sleep(5)
+        time.sleep(5) #wait for page to load
         
         search_results = WebDriverWait(browser, 20).until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']")))
-        print("[+] Number of search results found: " + str(len(search_results)))
         carousels = browser.find_elements(By.CSS_SELECTOR, "span[data-component-type='s-searchgrid-carousel']")
-        print("[+] Number of carousels found: " + str(len(carousels)))
         video_elements = browser.find_elements(By.CSS_SELECTOR, "div[class='a-section sbv-video aok-relative sbv-vertical-center-within-parent']")
-        print("[+] Number of video elements found: " + str(len(video_elements)))
         banner_elements = browser.find_elements(By.CSS_SELECTOR, "div[class='s-result-item s-widget s-widget-spacing-large AdHolder s-flex-full-width']")
-        print("[+] Number of banner elements found: " + str(len(banner_elements)))
         
         result_position = 1
 
@@ -344,7 +340,6 @@ def main():
                 listing_type = carousel.find_element(By.XPATH, ".//preceding::span[contains(@class,'a-size-medium-plus') and contains(@class,'a-color-base')][1]")
                 listing_type = listing_type.get_attribute("innerHTML")
 
-                #listing_type = carousel.find_element_by_xpath("./preceding-sibling::span[@class='a-size-medium-plus a-color-base']")
                 carousel_products = carousel.find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
                 product_position = 1
                 for product in carousel_products:
@@ -377,7 +372,7 @@ def main():
                 search_result["best_seller"] = "NA"
                 search_result["prime"] = "NA"
                 search_result["average_rating"] = "NA"
-                search_result["number_of_ratings"] = "NA"
+                search_result["no_of_ratings"] = "NA"
                 search_result["name"] = "NA"
                 search_result["amazon_brand"] = "NA"
                 search_result["price"] = "NA"
@@ -424,9 +419,9 @@ def main():
                 insert_search_result(search_result)
                 banner_position += 1
 
-        total_run_time = time.time() - total_run_time
-        update_search_term(search_term, location, mullvad_node, total_run_time)
-        print("[+] Done " + search_term + " " + str(round(total_run_time/60, 2)) + " minutes")
+        search_term_run_time = time.time() - search_term_run_time
+        update_search_term(search_term, location, mullvad_node, search_term_run_time)
+        print("[+] Done " + search_term + " " + str(round(search_term_run_time/60, 2)) + " minutes")
 
     browser.quit()
 
