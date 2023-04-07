@@ -403,7 +403,7 @@ def main():
             if banner_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
-                search_result["url"] = video_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']").get_attribute("href")
+                search_result["url"] = banner_element.find_element(By.CSS_SELECTOR, "a[class^='a-link-normal']").get_attribute("href")
                 search_result["ad"] = True
                 search_result["listing_type"] = "Banner"
                 search_result["amazons_choice"] = "NA"
