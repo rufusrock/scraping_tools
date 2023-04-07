@@ -1,5 +1,4 @@
 from selenium import webdriver
-#from seleniumwire import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
@@ -7,14 +6,11 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import NoSuchElementException
-import requests
-from random import randint, choice
+from random import choice
 import time
-import shutil
 import urllib.request
-from datetime import datetime
 from twocaptcha import TwoCaptcha
-import csv
+from tqdm import tqdm
 import os
 import subprocess
 import re
@@ -301,7 +297,7 @@ def main():
     
     unscraped_search_terms = get_unscraped_search_terms()
 
-    for (search_term,) in unscraped_search_terms:
+    for (search_term,) in tqdm(unscraped_search_terms, desc="Search Terms", unit="search term"):
         total_run_time = time.time()
         network_info = subprocess.run(["mullvad", "status"], capture_output=True, text=True).stdout
         location = network_info.split("in")[-1].strip()
@@ -332,7 +328,7 @@ def main():
         
         result_position = 1
 
-        for result in search_results:
+        for result in tqdm(search_results, desc="Search Results", unit="result", leave=False):
             listing_type = "Results"
             search_result = create_search_result_dict(search_term)
             search_result["listing_type"] = listing_type
@@ -344,7 +340,7 @@ def main():
             result_position += 1
         
         carousel_counter = 1
-        for carousel in carousels:
+        for carousel in tqdm(carousels, desc="Carousels", unit="carousel", leave=False):
             if carousel.is_displayed():
                 listing_type = carousel.find_element(By.XPATH, ".//preceding::span[contains(@class,'a-size-medium-plus') and contains(@class,'a-color-base')][1]")
                 listing_type = listing_type.get_attribute("innerHTML")
@@ -372,7 +368,7 @@ def main():
             carousel_counter += 1
 
         video_position = 1
-        for video_element in video_elements:
+        for video_element in tqdm(video_elements, desc="Videos", unit="video", leave=False):
             if video_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
@@ -407,7 +403,7 @@ def main():
                 video_position += 1
 
         banner_position = 1
-        for banner_element in banner_elements:
+        for banner_element in tqdm(banner_elements, desc="Banners", unit="banner", leave=False):
             if banner_element.is_displayed():
                 search_result = create_search_result_dict(search_term)
 
