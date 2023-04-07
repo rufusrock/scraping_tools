@@ -1,7 +1,7 @@
 import datetime
 import sqlite3
 
-# Define table column names as constants
+# Define search_result table column names as constants
 TIME = "time"
 NAME = "name"
 SEARCH_TERM = "search_term"
@@ -74,3 +74,4 @@ def update_search_term(search_term, location, mullvad_node, time_taken):
                      WHERE search_term = ?''', (date_completed, location, mullvad_node, time_taken, search_term))
         conn.commit()
 
+#all the product stuff below 

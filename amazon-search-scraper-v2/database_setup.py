@@ -4,7 +4,7 @@ import csv
 conn = sqlite3.connect('amazon_search_scrape.db')
 c = conn.cursor()
 
-# Create the 'products' table
+# Create the 'products' table - schema might need changing not sure about the numerical ID
 c.execute('''CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY,
                 product_name TEXT NOT NULL,
@@ -60,7 +60,7 @@ c.execute('''CREATE TABLE IF NOT EXISTS search_terms (
                 time_to_complete TEXT
             )''')
 
-# Create the 'search_results' table
+# Create the 'search_results' table - schema might need changing not sure about the numerical ID
 c.execute('''CREATE TABLE IF NOT EXISTS search_results (
                 id INTEGER PRIMARY KEY,
                 time TEXT NOT NULL,
@@ -117,6 +117,5 @@ def print_search_terms():
 insert_search_terms_from_csv()
 print_search_terms()
 
-# Commit the changes and close the connection
 conn.commit()
 conn.close()
