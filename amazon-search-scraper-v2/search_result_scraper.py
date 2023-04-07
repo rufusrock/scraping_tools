@@ -334,7 +334,6 @@ def main():
             search_result["listing_type"] = listing_type
             search_result["position_within_listing_type"] = result_position
             search_result = get_search_result_data(browser, result, search_result)
-            print(f"[+] Scraping search result {result_position}")
 
             insert_search_result(search_result)
             result_position += 1
@@ -349,7 +348,6 @@ def main():
                 carousel_products = carousel.find_elements(By.CSS_SELECTOR, "li[class^='a-carousel-card']")
                 product_position = 1
                 for product in carousel_products:
-                    print("[+] Scraping carousel product")
 
                     search_result = create_search_result_dict(search_term)
                     
@@ -362,7 +360,6 @@ def main():
                     search_result["position_within_listing_type"] = product_position
                     search_result = get_search_result_data(browser, product, search_result)
                     product_position += 1
-                    print("[+] Inserting carousel product")
                     insert_search_result(search_result)
 
             carousel_counter += 1
@@ -399,7 +396,6 @@ def main():
 
                 insert_search_result(search_result)
 
-                print("[+] Video Product completed")
                 video_position += 1
 
         banner_position = 1
@@ -426,7 +422,6 @@ def main():
                 search_result = get_size_stats(browser, banner_element, search_result)
 
                 insert_search_result(search_result)
-                print("[+] Banner Product completed")
                 banner_position += 1
 
         total_run_time = time.time() - total_run_time
