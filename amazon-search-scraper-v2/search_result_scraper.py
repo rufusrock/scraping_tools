@@ -210,7 +210,7 @@ def get_search_result_data(browser, search_result, product_data):
      # Get the product's number of reviews
     no_of_reviews = find_element(search_result, (By.CSS_SELECTOR, "span.a-size-base.s-underline-text"))
     if no_of_reviews:
-        product_data["no_of_ratings"] = no_of_reviews.text.replace(",", "")
+        product_data["no_of_ratings"] = no_of_reviews.text.replace(",", "").replace("(","").replace(")","")
     else:
         product_data["no_of_ratings"] = "None"
 
